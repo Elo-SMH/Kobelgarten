@@ -12,6 +12,8 @@ describe("migrateSave", () => {
       plantCounter: 0,
       inventory: {},
       wateringCanLevel: 1,
+      propagules: {},
+      propaguleCounter: 0,
     };
     expect(migrateSave(save, SAVE_VERSION)).toEqual(save);
   });
@@ -33,6 +35,27 @@ describe("migrateSave", () => {
       plantCounter: 0,
       inventory: {},
       wateringCanLevel: 1,
+      propagules: {},
+      propaguleCounter: 0,
+    });
+  });
+
+  it("v3 → v4 adds the empty breeding inventory", () => {
+    const v3 = {
+      tick: 1,
+      lastTickAt: 1_000_000,
+      hazelnuts: 10,
+      plants: {},
+      shelf: [],
+      plantCounter: 0,
+      inventory: { "pot-small": 1 },
+      wateringCanLevel: 2,
+    };
+    const migrated = migrateSave(v3, 3);
+    expect(migrated).toEqual({
+      ...v3,
+      propagules: {},
+      propaguleCounter: 0,
     });
   });
 

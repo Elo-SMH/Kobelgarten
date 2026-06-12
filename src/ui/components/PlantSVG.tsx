@@ -1,16 +1,10 @@
 import { useMemo } from "react";
 import { CONFIG } from "../../content/config";
 import type { PlantInstance } from "../../engine/growth";
-import type { LeafShape, PlantSpecies } from "../../engine/schemas";
+import { hashSeed } from "../../engine/rng";
+import type { PlantSpecies } from "../../engine/schemas";
 import { plantLayout } from "./plantLayout";
-
-// Unit leaf paths: base at (0,0), pointing up.
-const LEAF_PATHS: Record<LeafShape, string> = {
-  heart: "M0 0 C7 -4 11 -14 0 -24 C-11 -14 -7 -4 0 0",
-  blade: "M0 0 C3 -12 3 -28 0 -38 C-3 -28 -3 -12 0 0",
-  arrow: "M0 0 C6 -3 9 -7 7 -13 L0 -24 L-7 -13 C-9 -7 -6 -3 0 0",
-  fenestrated: "M0 0 C9 -4 13 -15 0 -26 C-13 -15 -9 -4 0 0",
-};
+import { VariegatedLeaf } from "./VariegatedLeaf";
 
 interface PlantSVGProps {
   plant: PlantInstance;
@@ -24,7 +18,6 @@ export function PlantSVG({ plant, species }: PlantSVGProps) {
   const filter = plant.dead
     ? "grayscale(0.85) sepia(0.4) brightness(0.95)"
     : `hue-rotate(${plant.genome.hueShift}deg) saturate(${1 - 0.55 * plant.wilt})`;
-  const path = LEAF_PATHS[species.leafShape];
 
   return (
     <svg
@@ -41,16 +34,24 @@ export function PlantSVG({ plant, species }: PlantSVGProps) {
           layout.leaves.map((leaf, index) => {
             const angle = leaf.angle + droop * Math.sign(leaf.angle);
             const rad = (angle * Math.PI) / 180;
+            const leafProps = {
+              shape: species.leafShape,
+              palette: species.palette,
+              variegation: plant.genome.variegation,
+              roll: leaf.roll,
+              clipId: `${plant.id}-leaf-${index}`,
+              seed: hashSeed(`${plant.id}:leaf:${index}`),
+            };
             if (species.leafShape === "blade") {
               // Blade leaves grow straight from the soil, no stem.
-              const scaleY = leaf.length / 38;
+              const scaleY = Math.max(0.3, leaf.length / 38);
               return (
-                <path
+                <g
                   key={index}
-                  d={path}
-                  fill={leaf.varieg ? species.palette.varieg : species.palette.base}
-                  transform={`translate(60 98) rotate(${angle}) scale(${leaf.scale * 0.8} ${scaleY < 0.3 ? 0.3 : scaleY})`}
-                />
+                  transform={`translate(60 98) rotate(${angle}) scale(${leaf.scale * 0.8} ${scaleY})`}
+                >
+                  <VariegatedLeaf {...leafProps} />
+                </g>
               );
             }
             const tipX = 60 + Math.sin(rad) * leaf.length;
@@ -66,11 +67,11 @@ export function PlantSVG({ plant, species }: PlantSVGProps) {
                   strokeWidth="2"
                   strokeLinecap="round"
                 />
-                <path
-                  d={path}
-                  fill={leaf.varieg ? species.palette.varieg : species.palette.base}
+                <g
                   transform={`translate(${tipX} ${tipY}) rotate(${angle}) scale(${leaf.scale})`}
-                />
+                >
+                  <VariegatedLeaf {...leafProps} />
+                </g>
               </g>
             );
           })

@@ -18,6 +18,22 @@ export const CONFIG = {
   genetics: {
     seedJitter: 0.1,
     seedHueJitter: 6,
+    geneDrift: 0.05,
+    hueDrift: 2,
+    seedsPerCross: [1, 3],
+    // Steckling startet als Sämling, nicht als Samen
+    cuttingStartProgress: 0.05,
+    // Würfeltabelle PLAN 2.2; Basischancen gelten bei mutability 0.02
+    variegation: {
+      baselineMutability: 0.02,
+      spontaneousChance: 0.02,
+      spontaneousCoverage: [0.05, 0.15],
+      freshStability: [0.3, 0.8],
+      intensifyChance: 0.1,
+      intensifyGain: [0.05, 0.15],
+      typeJumpChance: 0.03,
+      reversionFactor: 0.25,
+    },
   } satisfies GeneticsConfig,
 
   growth: {

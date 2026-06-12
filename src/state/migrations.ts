@@ -1,12 +1,12 @@
 import { CONFIG } from "../content/config";
 import type { PlantInstance } from "../engine/growth";
-import type { LightPlacement } from "../engine/schemas";
+import type { Genome, LightPlacement } from "../engine/schemas";
 
 /**
  * Versioned saves. Any change to the save shape requires bumping
  * SAVE_VERSION and adding a migration step below — never break old saves.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SaveV1 {
   tick: number;
@@ -33,8 +33,24 @@ export interface SaveV3 extends SaveV2 {
   wateringCanLevel: number;
 }
 
+/**
+ * Vermehrungsgut aus der Zuchtstation: ein geschnittener Steckling oder ein
+ * gekreuzter Samen mit fertigem Genom, wartet auf das Einpflanzen im Kobel.
+ */
+export interface Propagule {
+  id: string;
+  kind: "cutting" | "seed";
+  genome: Genome;
+}
+
+export interface SaveV4 extends SaveV3 {
+  propagules: Record<string, Propagule>;
+  /** Monoton steigender Zähler für eindeutige Propagule-IDs. */
+  propaguleCounter: number;
+}
+
 /** The current save shape. */
-export type Save = SaveV3;
+export type Save = SaveV4;
 
 export function createDefaultShelf(): ShelfSlotState[] {
   return CONFIG.shelf.slots.map((placement) => ({ placement, plantId: null }));
@@ -65,6 +81,12 @@ const migrations: Record<number, Migration> = {
     ),
     inventory: {},
     wateringCanLevel: 1,
+  }),
+  // v3 → v4: Zuchtstation mit Vermehrungsgut-Inventar (M4)
+  4: (state) => ({
+    ...state,
+    propagules: {},
+    propaguleCounter: 0,
   }),
 };
 

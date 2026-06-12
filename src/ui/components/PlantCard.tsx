@@ -5,6 +5,7 @@ import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { NeedBar } from "./NeedBar";
 import { PlantSVG } from "./PlantSVG";
+import { variegationLabel } from "./variegation";
 
 const PHASE_KEYS: Record<GrowthPhase, MessageKey> = {
   seed: "phase.seed",
@@ -38,6 +39,11 @@ export function PlantCard({ plantId }: PlantCardProps) {
       <div className="flex items-baseline justify-between">
         <h3 className="font-semibold">{species.name}</h3>
         <span className="flex items-center gap-1">
+          {plant.genome.variegation.type !== "none" && (
+            <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-xs text-leaf-900">
+              ✨ {variegationLabel(plant.genome.variegation)}
+            </span>
+          )}
           {fertilized && !plant.dead && (
             <span className="rounded-full bg-hazel-300/40 px-2 py-0.5 text-xs text-hazel-700">
               ✨ {t("plant.fertilizedLabel")}

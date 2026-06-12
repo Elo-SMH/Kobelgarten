@@ -4,10 +4,11 @@ import { CONFIG } from "../content/config";
 import { potItemId, shopItemById } from "../content/items";
 import { speciesById } from "../content/plants";
 import { plantValue, shelfSlotPrice } from "../engine/economy";
-import { createSeedGenome } from "../engine/genetics";
+import { canCross, createSeedGenome, cross, mutate } from "../engine/genetics";
 import {
   createPlant,
   fertilizePlant as applyFertilizer,
+  phaseOf,
   tickPlantMany,
   waterPlant as applyWatering,
 } from "../engine/growth";
@@ -44,6 +45,16 @@ interface GameStore extends Save {
   sellPlant: (plantId: string) => void;
   /** Entsorgt eine eingegangene Pflanze; der Topf kommt zurück. */
   removePlant: (plantId: string) => void;
+  /** Schneidet einen Steckling (ab Jungpflanze): Klon mit Mutations-Würfen. */
+  cutCutting: (plantId: string) => void;
+  /** Kreuzt zwei Adults kompatibler Arten → 1–3 Samen im Vermehrungsgut. */
+  crossPlants: (plantIdA: string, plantIdB: string) => void;
+  /** Pflanzt Vermehrungsgut in einen Topf aus dem Inventar. */
+  plantPropagule: (
+    slotIndex: number,
+    propaguleId: string,
+    potSize: PotSize,
+  ) => void;
 }
 
 /** Inventar-Update; Einträge mit Bestand 0 werden entfernt. */
@@ -70,6 +81,8 @@ export const useGameStore = create<GameStore>()(
       plantCounter: 0,
       inventory: {},
       wateringCanLevel: 1,
+      propagules: {},
+      propaguleCounter: 0,
 
       catchUp: (now) => {
         const { tick, lastTickAt, plants, shelf } = get();
@@ -221,6 +234,88 @@ export const useGameStore = create<GameStore>()(
           inventory: withCount(inventory, potItemId(plant.potSize), 1),
         });
       },
+
+      cutCutting: (plantId) => {
+        const { plants, propagules, propaguleCounter } = get();
+        const plant = plants[plantId];
+        if (!plant || plant.dead) return;
+        const species = speciesById[plant.genome.speciesId];
+        if (!species) return;
+        const phase = phaseOf(plant.progress, CONFIG.growth);
+        if (phase === "seed" || phase === "seedling") return;
+        const nextCounter = propaguleCounter + 1;
+        const id = `prop-${nextCounter}`;
+        const rng = createRng(hashSeed(`cut:${plantId}:${nextCounter}`));
+        const genome = mutate(plant.genome, species, rng, CONFIG.genetics);
+        set({
+          propagules: { ...propagules, [id]: { id, kind: "cutting", genome } },
+          propaguleCounter: nextCounter,
+        });
+      },
+
+      crossPlants: (plantIdA, plantIdB) => {
+        const { plants, propagules, propaguleCounter } = get();
+        if (plantIdA === plantIdB) return;
+        const plantA = plants[plantIdA];
+        const plantB = plants[plantIdB];
+        if (!plantA || !plantB || plantA.dead || plantB.dead) return;
+        const speciesA = speciesById[plantA.genome.speciesId];
+        const speciesB = speciesById[plantB.genome.speciesId];
+        if (!speciesA || !speciesB || !canCross(speciesA, speciesB)) return;
+        const phaseA = phaseOf(plantA.progress, CONFIG.growth);
+        const phaseB = phaseOf(plantB.progress, CONFIG.growth);
+        const isAdult = (phase: string) =>
+          phase === "adult" || phase === "pracht";
+        if (!isAdult(phaseA) || !isAdult(phaseB)) return;
+        const rng = createRng(
+          hashSeed(`cross:${plantIdA}:${plantIdB}:${propaguleCounter}`),
+        );
+        const seeds = cross(
+          plantA.genome,
+          speciesA,
+          plantB.genome,
+          speciesB,
+          rng,
+          CONFIG.genetics,
+        );
+        const next = { ...propagules };
+        let counter = propaguleCounter;
+        for (const genome of seeds) {
+          counter += 1;
+          const id = `prop-${counter}`;
+          next[id] = { id, kind: "seed", genome };
+        }
+        set({ propagules: next, propaguleCounter: counter });
+      },
+
+      plantPropagule: (slotIndex, propaguleId, potSize) => {
+        const { shelf, plants, plantCounter, inventory, propagules } = get();
+        const slot = shelf[slotIndex];
+        const propagule = propagules[propaguleId];
+        if (!slot || slot.plantId !== null || !propagule) return;
+        const potId = potItemId(potSize);
+        if ((inventory[potId] ?? 0) < 1) return;
+        const nextCounter = plantCounter + 1;
+        const id = `plant-${nextCounter}`;
+        const initialProgress =
+          propagule.kind === "cutting"
+            ? CONFIG.genetics.cuttingStartProgress
+            : 0;
+        const remaining = { ...propagules };
+        delete remaining[propaguleId];
+        set({
+          plants: {
+            ...plants,
+            [id]: createPlant(id, propagule.genome, potSize, initialProgress),
+          },
+          shelf: shelf.map((entry, index) =>
+            index === slotIndex ? { ...entry, plantId: id } : entry,
+          ),
+          plantCounter: nextCounter,
+          inventory: withCount(inventory, potId, -1),
+          propagules: remaining,
+        });
+      },
     }),
     {
       name: "kobelgarten-save",
@@ -235,6 +330,8 @@ export const useGameStore = create<GameStore>()(
         plantCounter: state.plantCounter,
         inventory: state.inventory,
         wateringCanLevel: state.wateringCanLevel,
+        propagules: state.propagules,
+        propaguleCounter: state.propaguleCounter,
       }),
     },
   ),

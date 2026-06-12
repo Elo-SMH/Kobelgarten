@@ -17,8 +17,11 @@ export interface LeafSpec {
   length: number;
   /** Scale factor for the leaf path. */
   scale: number;
-  /** Whether this leaf shows the variegation color. */
-  varieg: boolean;
+  /**
+   * Per-leaf variegation roll in [0, 1); the renderer compares it against
+   * coverage to decide how strongly this leaf shows the pattern.
+   */
+  roll: number;
 }
 
 export interface PlantLayout {
@@ -50,7 +53,6 @@ export function plantLayout(
   const count = LEAF_COUNT[phase];
   const factor = SIZE_FACTOR[phase];
   const size = plant.genome.size;
-  const coverage = plant.genome.variegation.coverage;
   const rng = createRng(hashSeed(plant.id));
 
   const leaves: LeafSpec[] = [];
@@ -67,7 +69,7 @@ export function plantLayout(
       angle: side * (18 + tier * 15) + angleJitter,
       length: (16 + 26 * factor) * size * sizeJitter,
       scale: (0.45 + 0.45 * factor) * size * sizeJitter,
-      varieg: variegRoll < coverage,
+      roll: variegRoll,
     });
   }
   return { phase, leaves };

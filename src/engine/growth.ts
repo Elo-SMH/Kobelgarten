@@ -49,11 +49,13 @@ export function createPlant(
   id: string,
   genome: Genome,
   potSize: PotSize,
+  /** Stecklinge starten mit Vorsprung (CONFIG.genetics.cuttingStartProgress). */
+  initialProgress = 0,
 ): PlantInstance {
   return {
     id,
     genome,
-    progress: 0,
+    progress: initialProgress,
     water: 1,
     wilt: 0,
     dead: false,

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { potItemId, seedItems, shopItemById } from "../../content/items";
+import { speciesById } from "../../content/plants";
 import type { PotSize } from "../../engine/schemas";
 import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
@@ -13,6 +14,11 @@ const POT_KEYS: Record<PotSize, MessageKey> = {
   large: "pot.large",
 };
 
+/** Was eingepflanzt werden soll: Shop-Samen oder Vermehrungsgut der Zucht. */
+type PlantChoice =
+  | { kind: "shop"; speciesId: string }
+  | { kind: "propagule"; propaguleId: string };
+
 interface ShelfSlotCardProps {
   slotIndex: number;
 }
@@ -20,8 +26,10 @@ interface ShelfSlotCardProps {
 export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
   const slot = useGameStore((state) => state.shelf[slotIndex]);
   const inventory = useGameStore((state) => state.inventory);
+  const propagules = useGameStore((state) => state.propagules);
   const plantSeed = useGameStore((state) => state.plantSeed);
-  const [chosenSpecies, setChosenSpecies] = useState<string | null>(null);
+  const plantPropagule = useGameStore((state) => state.plantPropagule);
+  const [choice, setChoice] = useState<PlantChoice | null>(null);
   if (!slot) return null;
 
   const placementLabel =
@@ -32,10 +40,20 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
   const ownedSeeds = seedItems.filter(
     (item) => (inventory[item.id] ?? 0) > 0 && item.kind === "seed",
   );
+  const ownedPropagules = Object.values(propagules);
   const ownedPots = POT_SIZES.filter(
     (size) => (inventory[potItemId(size)] ?? 0) > 0,
   );
-  const canPlant = ownedSeeds.length > 0 && ownedPots.length > 0;
+  const canPlant =
+    (ownedSeeds.length > 0 || ownedPropagules.length > 0) &&
+    ownedPots.length > 0;
+
+  const plantWithPot = (size: PotSize) => {
+    if (!choice) return;
+    if (choice.kind === "shop") plantSeed(slotIndex, choice.speciesId, size);
+    else plantPropagule(slotIndex, choice.propaguleId, size);
+    setChoice(null);
+  };
 
   return (
     <div className="flex min-h-72 flex-col rounded-2xl border border-cream-300 bg-cream-50 p-4 shadow-sm">
@@ -51,7 +69,7 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
           </p>
           {!canPlant ? (
             <p className="text-xs text-hazel-500">{t("slot.buyHint")}</p>
-          ) : chosenSpecies === null ? (
+          ) : choice === null ? (
             <>
               <p className="text-xs text-hazel-500">{t("slot.plantPrompt")}</p>
               <div className="flex flex-wrap justify-center gap-2">
@@ -59,7 +77,9 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                   item.kind === "seed" ? (
                     <button
                       key={item.id}
-                      onClick={() => setChosenSpecies(item.speciesId)}
+                      onClick={() =>
+                        setChoice({ kind: "shop", speciesId: item.speciesId })
+                      }
                       className="rounded-full bg-leaf-500 px-3 py-1 text-sm font-medium text-white transition hover:bg-leaf-700"
                     >
                       🌱 {shopItemById[item.id]?.name ?? item.id} ×
@@ -67,6 +87,26 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                     </button>
                   ) : null,
                 )}
+                {ownedPropagules.map((propagule) => (
+                  <button
+                    key={propagule.id}
+                    onClick={() =>
+                      setChoice({ kind: "propagule", propaguleId: propagule.id })
+                    }
+                    className="rounded-full bg-hazel-500 px-3 py-1 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
+                  >
+                    {propagule.kind === "cutting" ? "✂️" : "🌱"}{" "}
+                    {speciesById[propagule.genome.speciesId]?.name ??
+                      propagule.genome.speciesId}{" "}
+                    (
+                    {t(
+                      propagule.kind === "cutting"
+                        ? "zucht.kind.cutting"
+                        : "zucht.kind.seed",
+                    )}
+                    )
+                  </button>
+                ))}
               </div>
             </>
           ) : (
@@ -76,10 +116,7 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                 {ownedPots.map((size) => (
                   <button
                     key={size}
-                    onClick={() => {
-                      plantSeed(slotIndex, chosenSpecies, size);
-                      setChosenSpecies(null);
-                    }}
+                    onClick={() => plantWithPot(size)}
                     className="rounded-full bg-hazel-500 px-3 py-1 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
                   >
                     🪴 {t(POT_KEYS[size])} ×{inventory[potItemId(size)]}
@@ -87,7 +124,7 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                 ))}
               </div>
               <button
-                onClick={() => setChosenSpecies(null)}
+                onClick={() => setChoice(null)}
                 className="text-xs text-hazel-500 underline"
               >
                 {t("slot.back")}

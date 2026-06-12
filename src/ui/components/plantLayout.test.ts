@@ -60,7 +60,7 @@ describe("plantLayout", () => {
     const pracht = plantLayout(makePlant("p", 1.5), config);
     for (const [index, leaf] of juvenile.leaves.entries()) {
       expect(pracht.leaves[index].angle).toBe(leaf.angle);
-      expect(pracht.leaves[index].varieg).toBe(leaf.varieg);
+      expect(pracht.leaves[index].roll).toBe(leaf.roll);
     }
   });
 
@@ -73,15 +73,11 @@ describe("plantLayout", () => {
     }
   });
 
-  it("full coverage marks every leaf variegated, zero coverage none", () => {
-    const none = plantLayout(makePlant("p", 1.5), config);
-    expect(none.leaves.every((leaf) => !leaf.varieg)).toBe(true);
-    const full = plantLayout(
-      makePlant("p", 1.5, {
-        variegation: { type: "albo", coverage: 0.6, stability: 1 },
-      }),
-      config,
-    );
-    expect(full.leaves.some((leaf) => leaf.varieg)).toBe(true);
+  it("every leaf carries a variegation roll in [0, 1)", () => {
+    const layout = plantLayout(makePlant("p", 1.5), config);
+    for (const leaf of layout.leaves) {
+      expect(leaf.roll).toBeGreaterThanOrEqual(0);
+      expect(leaf.roll).toBeLessThan(1);
+    }
   });
 });

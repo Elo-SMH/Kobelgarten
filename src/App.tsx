@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { t } from "./i18n";
 import { useGameStore } from "./state/store";
+import { BreedingScreen } from "./ui/screens/BreedingScreen";
 import { KobelScreen } from "./ui/screens/KobelScreen";
 import { ShopScreen } from "./ui/screens/ShopScreen";
 
-type Screen = "kobel" | "shop";
+type Screen = "kobel" | "zucht" | "shop";
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("kobel");
@@ -24,6 +25,7 @@ export function App() {
         {(
           [
             ["kobel", `🐿️ ${t("nav.kobel")}`],
+            ["zucht", `🧬 ${t("nav.zucht")}`],
             ["shop", `🛒 ${t("nav.shop")}`],
           ] as const
         ).map(([id, label]) => (
@@ -40,7 +42,13 @@ export function App() {
           </button>
         ))}
       </nav>
-      {screen === "kobel" ? <KobelScreen /> : <ShopScreen />}
+      {screen === "kobel" ? (
+        <KobelScreen />
+      ) : screen === "zucht" ? (
+        <BreedingScreen />
+      ) : (
+        <ShopScreen />
+      )}
     </div>
   );
 }

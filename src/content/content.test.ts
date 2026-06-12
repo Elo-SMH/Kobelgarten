@@ -17,8 +17,8 @@ const fileExports = Object.entries(modules).flatMap(([path, mod]) =>
 );
 
 describe("content contract: plants", () => {
-  it("discovers the M2 species files", () => {
-    expect(fileExports.length).toBeGreaterThanOrEqual(3);
+  it("discovers all 8 v1 species files (PLAN 2.8)", () => {
+    expect(fileExports.length).toBeGreaterThanOrEqual(8);
   });
 
   it("every export of every plant file validates against the schema", () => {

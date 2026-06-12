@@ -67,6 +67,15 @@ function growWithCare(
   return current;
 }
 
+describe("createPlant", () => {
+  it("starts at progress 0 by default, cuttings get a head start", () => {
+    expect(createPlant("p-1", makeGenome(), "small").progress).toBe(0);
+    const cutting = createPlant("p-2", makeGenome(), "small", 0.05);
+    expect(cutting.progress).toBe(0.05);
+    expect(phaseOf(cutting.progress, config)).toBe("seedling");
+  });
+});
+
 describe("phaseOf", () => {
   it("maps progress to the five phases", () => {
     expect(phaseOf(0, config)).toBe("seed");
