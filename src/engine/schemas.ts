@@ -46,6 +46,35 @@ export type LightNeed = z.infer<typeof lightNeedSchema>;
 export const lightPlacementSchema = z.enum(["window", "shade"]);
 export type LightPlacement = z.infer<typeof lightPlacementSchema>;
 
+/** Topfgrößen — die Größe bestimmt das Wachstumslimit (config.growth.potCaps). */
+export const potSizeSchema = z.enum(["small", "medium", "large"]);
+export type PotSize = z.infer<typeof potSizeSchema>;
+
+const shopItemBase = {
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  /** Deutscher Anzeigename. */
+  name: z.string().min(1),
+  emoji: z.string().min(1),
+  /** Kaufpreis in Haselnüssen. */
+  price: z.number().positive(),
+};
+
+/**
+ * Shop-Artikel sind Daten, kein Verhalten: ihre Wirkung (Topf-Limit,
+ * Dünger-Stärke, …) steht in config.ts, hier nur die Referenz.
+ */
+export const shopItemSchema = z.discriminatedUnion("kind", [
+  z.object({ ...shopItemBase, kind: z.literal("seed"), speciesId: z.string().min(1) }),
+  z.object({ ...shopItemBase, kind: z.literal("pot"), potSize: potSizeSchema }),
+  z.object({ ...shopItemBase, kind: z.literal("fertilizer") }),
+  z.object({
+    ...shopItemBase,
+    kind: z.literal("upgrade"),
+    upgradeId: z.enum(["wateringCan"]),
+  }),
+]);
+export type ShopItem = z.infer<typeof shopItemSchema>;
+
 const hexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i, "expected #rrggbb");
 
 export const plantSpeciesSchema = z.object({

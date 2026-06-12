@@ -15,6 +15,8 @@ const config: GrowthConfig = {
     medium: { window: 1, shade: 0.75 },
     bright: { window: 1, shade: 0.5 },
   },
+  potCaps: { small: 0.6, medium: 1, large: 1.5 },
+  fertilizer: { growthFactor: 1.5, durationTicks: 360 },
 };
 
 function makePlant(id: string, progress: number, genome: Partial<Genome> = {}): PlantInstance {
@@ -27,7 +29,7 @@ function makePlant(id: string, progress: number, genome: Partial<Genome> = {}): 
       hardiness: 1,
       variegation: { type: "none", coverage: 0, stability: 1 },
       ...genome,
-    }),
+    }, "large"),
     progress,
   };
 }

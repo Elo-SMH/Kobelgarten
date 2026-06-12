@@ -6,9 +6,11 @@ export function KobelScreen() {
   const tick = useGameStore((state) => state.tick);
   const hazelnuts = useGameStore((state) => state.hazelnuts);
   const slotCount = useGameStore((state) => state.shelf.length);
+  const wateringCanLevel = useGameStore((state) => state.wateringCanLevel);
+  const waterAll = useGameStore((state) => state.waterAll);
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-cream-100 px-4 py-8 text-hazel-900">
+    <main className="flex flex-col items-center px-4 py-8">
       <header className="mb-8 text-center">
         <h1 className="text-4xl font-bold text-leaf-900">
           🐿️ {t("app.title")}
@@ -34,9 +36,19 @@ export function KobelScreen() {
       </div>
 
       <section className="w-full max-w-3xl">
-        <h2 className="mb-3 text-center text-2xl font-semibold text-leaf-900">
-          {t("kobel.heading")}
-        </h2>
+        <div className="mb-3 flex items-center justify-center gap-3">
+          <h2 className="text-center text-2xl font-semibold text-leaf-900">
+            {t("kobel.heading")}
+          </h2>
+          {wateringCanLevel >= 2 && (
+            <button
+              onClick={waterAll}
+              className="rounded-full bg-sky-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-sky-600"
+            >
+              🚿 {t("kobel.waterAll")}
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {Array.from({ length: slotCount }, (_, index) => (
             <ShelfSlotCard key={index} slotIndex={index} />

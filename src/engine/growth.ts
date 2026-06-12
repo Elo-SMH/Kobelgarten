@@ -3,6 +3,7 @@ import type {
   LightNeed,
   LightPlacement,
   PlantSpecies,
+  PotSize,
 } from "./schemas";
 
 /** Wachstumsphasen: Samen → Sämling → Jungpflanze → Adult → Prachtexemplar. */
@@ -18,6 +19,10 @@ export interface PlantInstance {
   /** Welke-Schaden 0..1; bei 1 ist die Pflanze tot. */
   wilt: number;
   dead: boolean;
+  /** Topf der Pflanze; deckelt progress auf GrowthConfig.potCaps[potSize]. */
+  potSize: PotSize;
+  /** Verbleibende Ticks des Dünger-Buffs (0 = kein Buff). */
+  fertilizerTicks: number;
 }
 
 export interface GrowthConfig {
@@ -34,10 +39,27 @@ export interface GrowthConfig {
   wiltRecoveryPerTick: number;
   /** Wachstumsfaktor je Lichtbedarf × Stellplatz. */
   lightFactors: Record<LightNeed, Record<LightPlacement, number>>;
+  /** Wachstumslimit (max. progress) je Topfgröße. */
+  potCaps: Record<PotSize, number>;
+  /** Dünger-Buff: Wachstumsfaktor und Wirkdauer in Ticks. */
+  fertilizer: { growthFactor: number; durationTicks: number };
 }
 
-export function createPlant(id: string, genome: Genome): PlantInstance {
-  return { id, genome, progress: 0, water: 1, wilt: 0, dead: false };
+export function createPlant(
+  id: string,
+  genome: Genome,
+  potSize: PotSize,
+): PlantInstance {
+  return {
+    id,
+    genome,
+    progress: 0,
+    water: 1,
+    wilt: 0,
+    dead: false,
+    potSize,
+    fertilizerTicks: 0,
+  };
 }
 
 export function phaseOf(progress: number, config: GrowthConfig): GrowthPhase {
@@ -62,6 +84,8 @@ export function tickPlant(
   if (plant.dead) return plant;
 
   const water = Math.max(0, plant.water - species.waterDrainPerTick);
+  // Der Buff läuft mit der Zeit ab, auch wenn die Pflanze gerade nicht wächst.
+  const fertilizerTicks = Math.max(0, plant.fertilizerTicks - 1);
   let wilt = plant.wilt;
   let progress = plant.progress;
 
@@ -72,15 +96,26 @@ export function tickPlant(
     const waterFactor =
       water < config.lowWaterThreshold ? config.lowWaterGrowthFactor : 1;
     const lightFactor = config.lightFactors[species.lightNeed][placement];
-    progress = Math.min(
-      config.prachtProgress,
-      progress +
-        (plant.genome.growthRate * waterFactor * lightFactor) /
-          species.growthTicks,
+    const fertilizerFactor =
+      plant.fertilizerTicks > 0 ? config.fertilizer.growthFactor : 1;
+    const cap = Math.min(config.prachtProgress, config.potCaps[plant.potSize]);
+    // max(): ein bereits über dem Topf-Limit stehender progress (z.B. nach
+    // einer Migration) wird nie rückwirkend gekürzt.
+    progress = Math.max(
+      progress,
+      Math.min(
+        cap,
+        progress +
+          (plant.genome.growthRate *
+            waterFactor *
+            lightFactor *
+            fertilizerFactor) /
+            species.growthTicks,
+      ),
     );
   }
 
-  return { ...plant, water, wilt, progress, dead: wilt >= 1 };
+  return { ...plant, water, wilt, progress, fertilizerTicks, dead: wilt >= 1 };
 }
 
 /** Catch-up helper for offline progress: apply many ticks at once. */
@@ -102,4 +137,13 @@ export function tickPlantMany(
 export function waterPlant(plant: PlantInstance): PlantInstance {
   if (plant.dead) return plant;
   return { ...plant, water: 1 };
+}
+
+/** Dünger-Aktion: startet den Wachstums-Buff für config.fertilizer.durationTicks. */
+export function fertilizePlant(
+  plant: PlantInstance,
+  config: GrowthConfig,
+): PlantInstance {
+  if (plant.dead) return plant;
+  return { ...plant, fertilizerTicks: config.fertilizer.durationTicks };
 }

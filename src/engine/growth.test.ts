@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createPlant,
+  fertilizePlant,
   phaseOf,
   tickPlant,
   tickPlantMany,
@@ -8,7 +9,7 @@ import {
   type GrowthConfig,
   type PlantInstance,
 } from "./growth";
-import type { Genome, PlantSpecies } from "./schemas";
+import type { Genome, PlantSpecies, PotSize } from "./schemas";
 
 const config: GrowthConfig = {
   prachtProgress: 1.5,
@@ -22,6 +23,8 @@ const config: GrowthConfig = {
     medium: { window: 1, shade: 0.75 },
     bright: { window: 1, shade: 0.5 },
   },
+  potCaps: { small: 0.6, medium: 1, large: 1.5 },
+  fertilizer: { growthFactor: 1.5, durationTicks: 100 },
 };
 
 const species: PlantSpecies = {
@@ -76,13 +79,13 @@ describe("phaseOf", () => {
 
 describe("tickPlant", () => {
   it("drains water each tick", () => {
-    const plant = createPlant("p1", makeGenome());
+    const plant = createPlant("p1", makeGenome(), "large");
     const after = tickPlantMany(plant, species, "window", 10, config);
     expect(after.water).toBeCloseTo(1 - 10 * species.waterDrainPerTick, 10);
   });
 
   it("grows from seed to adult under good care", () => {
-    const plant = createPlant("p1", makeGenome());
+    const plant = createPlant("p1", makeGenome(), "large");
     const after = growWithCare(plant, 110);
     expect(after.progress).toBeGreaterThanOrEqual(1);
     expect(phaseOf(after.progress, config)).toBe("adult");
@@ -90,20 +93,20 @@ describe("tickPlant", () => {
   });
 
   it("keeps growing to Prachtexemplar and caps there", () => {
-    const plant = createPlant("p1", makeGenome());
+    const plant = createPlant("p1", makeGenome(), "large");
     const after = growWithCare(plant, 300);
     expect(after.progress).toBe(config.prachtProgress);
     expect(phaseOf(after.progress, config)).toBe("pracht");
   });
 
   it("growthRate gene scales growth speed", () => {
-    const slow = growWithCare(createPlant("a", makeGenome({ growthRate: 0.5 })), 100);
-    const fast = growWithCare(createPlant("b", makeGenome({ growthRate: 1.5 })), 100);
+    const slow = growWithCare(createPlant("a", makeGenome({ growthRate: 0.5 }), "large"), 100);
+    const fast = growWithCare(createPlant("b", makeGenome({ growthRate: 1.5 }), "large"), 100);
     expect(fast.progress).toBeCloseTo(slow.progress * 3, 5);
   });
 
   it("stops growing and wilts when dry", () => {
-    const dry: PlantInstance = { ...createPlant("p1", makeGenome()), water: 0 };
+    const dry: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0 };
     const after = tickPlantMany(dry, species, "window", 50, config);
     expect(after.progress).toBe(0);
     expect(after.wilt).toBeCloseTo(50 * config.wiltPerTick, 10);
@@ -111,7 +114,7 @@ describe("tickPlant", () => {
   });
 
   it("dies after prolonged neglect", () => {
-    const dry: PlantInstance = { ...createPlant("p1", makeGenome()), water: 0 };
+    const dry: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0 };
     const after = tickPlantMany(dry, species, "window", 600, config);
     expect(after.dead).toBe(true);
     expect(after.wilt).toBe(1);
@@ -119,11 +122,11 @@ describe("tickPlant", () => {
 
   it("hardiness buffers wilting (edge: hardy plant survives what kills a frail one)", () => {
     const frail: PlantInstance = {
-      ...createPlant("a", makeGenome({ hardiness: 0.5 })),
+      ...createPlant("a", makeGenome({ hardiness: 0.5 }), "large"),
       water: 0,
     };
     const hardy: PlantInstance = {
-      ...createPlant("b", makeGenome({ hardiness: 1.5 })),
+      ...createPlant("b", makeGenome({ hardiness: 1.5 }), "large"),
       water: 0,
     };
     expect(tickPlantMany(frail, species, "window", 400, config).dead).toBe(true);
@@ -131,34 +134,78 @@ describe("tickPlant", () => {
   });
 
   it("recovers from wilt while supplied with water", () => {
-    const wilted: PlantInstance = { ...createPlant("p1", makeGenome()), wilt: 0.5 };
+    const wilted: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), wilt: 0.5 };
     const after = tickPlantMany(wilted, species, "window", 50, config);
     expect(after.wilt).toBeCloseTo(0.5 - 50 * config.wiltRecoveryPerTick, 10);
   });
 
   it("grows slower at low water", () => {
-    const low: PlantInstance = { ...createPlant("a", makeGenome()), water: 0.1 };
+    const low: PlantInstance = { ...createPlant("a", makeGenome(), "large"), water: 0.1 };
     const after = tickPlant(low, species, "window", config);
     expect(after.progress).toBeCloseTo(config.lowWaterGrowthFactor / species.growthTicks, 10);
   });
 
   it("light placement matters according to the species' need", () => {
-    const sunny = growWithCare(createPlant("a", makeGenome()), 50, "window");
-    const shady = growWithCare(createPlant("b", makeGenome()), 50, "shade");
+    const sunny = growWithCare(createPlant("a", makeGenome(), "large"), 50, "window");
+    const shady = growWithCare(createPlant("b", makeGenome(), "large"), 50, "shade");
     // bright-need species grows at half speed in the shade
     expect(shady.progress).toBeCloseTo(sunny.progress * 0.5, 5);
   });
 
+  it("pot size caps growth (small pot stops at the juvenile limit)", () => {
+    const potted = (size: PotSize) =>
+      growWithCare(createPlant("p1", makeGenome(), size), 300);
+    expect(potted("small").progress).toBe(config.potCaps.small);
+    expect(potted("medium").progress).toBe(config.potCaps.medium);
+    expect(potted("large").progress).toBe(config.prachtProgress);
+  });
+
+  it("never shrinks a plant already above its pot cap (edge: migration)", () => {
+    const oversized: PlantInstance = {
+      ...createPlant("p1", makeGenome(), "small"),
+      progress: 1.2,
+    };
+    const after = growWithCare(oversized, 10);
+    expect(after.progress).toBe(1.2);
+  });
+
+  it("fertilizer boosts growth while active and expires afterwards", () => {
+    const plain = growWithCare(createPlant("a", makeGenome(), "large"), 50);
+    const boosted = growWithCare(
+      fertilizePlant(createPlant("b", makeGenome(), "large"), config),
+      50,
+    );
+    expect(boosted.progress).toBeCloseTo(
+      plain.progress * config.fertilizer.growthFactor,
+      5,
+    );
+    expect(boosted.fertilizerTicks).toBe(config.fertilizer.durationTicks - 50);
+
+    const expired = growWithCare(boosted, 100);
+    expect(expired.fertilizerTicks).toBe(0);
+  });
+
+  it("the fertilizer buff ticks down even while the plant is dry", () => {
+    const dry: PlantInstance = {
+      ...fertilizePlant(createPlant("p1", makeGenome(), "large"), config),
+      water: 0,
+    };
+    const after = tickPlantMany(dry, species, "window", 10, config);
+    expect(after.fertilizerTicks).toBe(config.fertilizer.durationTicks - 10);
+    expect(after.progress).toBe(0);
+  });
+
   it("a dead plant no longer changes", () => {
-    const dead: PlantInstance = { ...createPlant("p1", makeGenome()), dead: true, wilt: 1 };
+    const dead: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), dead: true, wilt: 1 };
     expect(tickPlant(dead, species, "window", config)).toBe(dead);
     expect(waterPlant(dead)).toBe(dead);
+    expect(fertilizePlant(dead, config)).toBe(dead);
   });
 });
 
 describe("waterPlant", () => {
   it("refills the tank", () => {
-    const thirsty: PlantInstance = { ...createPlant("p1", makeGenome()), water: 0.05 };
+    const thirsty: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0.05 };
     expect(waterPlant(thirsty).water).toBe(1);
   });
 });

@@ -21,25 +21,37 @@ interface PlantCardProps {
 export function PlantCard({ plantId }: PlantCardProps) {
   const plant = useGameStore((state) => state.plants[plantId]);
   const waterPlant = useGameStore((state) => state.waterPlant);
+  const fertilizePlant = useGameStore((state) => state.fertilizePlant);
   const removePlant = useGameStore((state) => state.removePlant);
+  const fertilizerCount = useGameStore(
+    (state) => state.inventory["duenger"] ?? 0,
+  );
   if (!plant) return null;
   const species = speciesById[plant.genome.speciesId];
   if (!species) return null;
 
   const phase = phaseOf(plant.progress, CONFIG.growth);
+  const fertilized = plant.fertilizerTicks > 0;
 
   return (
     <div className="flex flex-1 flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <h3 className="font-semibold">{species.name}</h3>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs ${
-            plant.dead
-              ? "bg-cream-200 text-hazel-700"
-              : "bg-leaf-100 text-leaf-900"
-          }`}
-        >
-          {plant.dead ? `🥀 ${t("plant.deadLabel")}` : t(PHASE_KEYS[phase])}
+        <span className="flex items-center gap-1">
+          {fertilized && !plant.dead && (
+            <span className="rounded-full bg-hazel-300/40 px-2 py-0.5 text-xs text-hazel-700">
+              ✨ {t("plant.fertilizedLabel")}
+            </span>
+          )}
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs ${
+              plant.dead
+                ? "bg-cream-200 text-hazel-700"
+                : "bg-leaf-100 text-leaf-900"
+            }`}
+          >
+            {plant.dead ? `🥀 ${t("plant.deadLabel")}` : t(PHASE_KEYS[phase])}
+          </span>
         </span>
       </div>
 
@@ -69,13 +81,23 @@ export function PlantCard({ plantId }: PlantCardProps) {
           🗑️ {t("plant.removeAction")}
         </button>
       ) : (
-        <button
-          onClick={() => waterPlant(plant.id)}
-          disabled={plant.water > 0.98}
-          className="mt-1 rounded-full bg-sky-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-cream-200 disabled:text-hazel-300"
-        >
-          💧 {t("plant.waterAction")}
-        </button>
+        <div className="mt-1 flex gap-2">
+          <button
+            onClick={() => waterPlant(plant.id)}
+            disabled={plant.water > 0.98}
+            className="flex-1 rounded-full bg-sky-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-cream-200 disabled:text-hazel-300"
+          >
+            💧 {t("plant.waterAction")}
+          </button>
+          {fertilizerCount > 0 && !fertilized && (
+            <button
+              onClick={() => fertilizePlant(plant.id)}
+              className="flex-1 rounded-full bg-hazel-500 px-4 py-1.5 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
+            >
+              🧪 {t("plant.fertilizeAction")}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

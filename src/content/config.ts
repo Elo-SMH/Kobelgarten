@@ -1,6 +1,7 @@
+import type { EconomyConfig, ShelfSlotPricing } from "../engine/economy";
 import type { GeneticsConfig } from "../engine/genetics";
 import type { GrowthConfig } from "../engine/growth";
-import type { LightPlacement } from "../engine/schemas";
+import type { LightPlacement, PotSize } from "../engine/schemas";
 
 /**
  * Central tuning constants (game-design invariant: tune here, never inline
@@ -32,9 +33,52 @@ export const CONFIG = {
       medium: { window: 1, shade: 0.75 },
       bright: { window: 1, shade: 0.5 },
     },
+    // Wachstumslimit je Topfgröße: klein → Jungpflanze, mittel → Adult,
+    // groß → Prachtexemplar
+    potCaps: { small: 0.6, medium: 1, large: 1.5 },
+    // Dünger: +50 % Wachstum für 360 Ticks (≈ 6h)
+    fertilizer: { growthFactor: 1.5, durationTicks: 360 },
   } satisfies GrowthConfig,
+
+  economy: {
+    // Adult ≈ 2× Samenpreis, damit der Kreislauf Kaufen→Ziehen→Verkaufen
+    // profitabel ist (Samenpreis = species.basePrice)
+    phaseValueFactors: {
+      seed: 0.15,
+      seedling: 0.5,
+      juvenile: 1.2,
+      adult: 2,
+      pracht: 3,
+    },
+    variegationMultipliers: {
+      none: 0,
+      marginata: 0.5,
+      sectoral: 1,
+      splash: 1.5,
+      halfmoon: 2.5,
+      albo: 4,
+    },
+    variegationWeight: 8,
+  } satisfies EconomyConfig,
+
+  shop: {
+    /** Kaufpreise; Samen kosten species.basePrice (PLAN 2.5). */
+    potPrices: { small: 5, medium: 20, large: 80 } satisfies Record<
+      PotSize,
+      number
+    >,
+    fertilizerPrice: 25,
+    wateringCanUpgradePrice: 150,
+    shelfSlot: { basePrice: 100, growthFactor: 1.5 } satisfies ShelfSlotPricing,
+    maxShelfSlots: 12,
+    /** Verkäufe ab diesem Wert fragen nach (Fehlklick-Schutz). */
+    sellConfirmThreshold: 500,
+    dailyOfferDiscount: 0.3,
+  },
 
   shelf: {
     slots: ["window", "window", "shade", "shade"] satisfies LightPlacement[],
+    /** Stellplätze zugekaufter Slots, zyklisch. */
+    extraSlotCycle: ["window", "shade"] satisfies LightPlacement[],
   },
 };

@@ -10,11 +10,13 @@ describe("migrateSave", () => {
       plants: {},
       shelf: [],
       plantCounter: 0,
+      inventory: {},
+      wateringCanLevel: 1,
     };
     expect(migrateSave(save, SAVE_VERSION)).toEqual(save);
   });
 
-  it("migrates a v1 save to v2 with an empty 4-slot shelf", () => {
+  it("migrates a v1 save through all steps to the current version", () => {
     const v1: SaveV1 = { tick: 42, lastTickAt: 1_000_000, hazelnuts: 77 };
     const migrated = migrateSave(v1, 1);
     expect(migrated).toEqual({
@@ -29,6 +31,32 @@ describe("migrateSave", () => {
         { placement: "shade", plantId: null },
       ],
       plantCounter: 0,
+      inventory: {},
+      wateringCanLevel: 1,
+    });
+  });
+
+  it("v2 → v3 gives existing plants a large pot and no fertilizer buff", () => {
+    const v2 = {
+      tick: 42,
+      lastTickAt: 1_000_000,
+      hazelnuts: 77,
+      plants: {
+        "plant-1": { id: "plant-1", progress: 1.4, water: 1, wilt: 0 },
+      },
+      shelf: [{ placement: "window", plantId: "plant-1" }],
+      plantCounter: 1,
+    };
+    const migrated = migrateSave(v2, 2);
+    expect(migrated.inventory).toEqual({});
+    expect(migrated.wateringCanLevel).toBe(1);
+    expect(migrated.plants["plant-1"]).toEqual({
+      id: "plant-1",
+      progress: 1.4,
+      water: 1,
+      wilt: 0,
+      potSize: "large",
+      fertilizerTicks: 0,
     });
   });
 

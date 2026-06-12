@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { plantSpeciesSchema } from "../engine/schemas";
+import { plantSpeciesSchema, shopItemSchema } from "../engine/schemas";
+import { allShopItems, dailyOfferPool, shopItemById } from "./items";
 import { allSpecies, speciesById } from "./plants";
 
 // Auto-discover every plant file so a forgotten registry entry or an
@@ -46,5 +47,42 @@ describe("content contract: plants", () => {
   it("species ids are unique", () => {
     const ids = allSpecies.map((species) => species.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("content contract: shop items", () => {
+  it("every shop item validates against the schema", () => {
+    for (const item of allShopItems) {
+      const parsed = shopItemSchema.safeParse(item);
+      expect(
+        parsed.success,
+        `${item.id}: ${parsed.success ? "ok" : parsed.error.message}`,
+      ).toBe(true);
+    }
+  });
+
+  it("item ids are unique and registered in the index", () => {
+    const ids = allShopItems.map((item) => item.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const item of allShopItems) {
+      expect(shopItemById[item.id]).toBe(item);
+    }
+  });
+
+  it("every species has a seed item priced at its basePrice (PLAN 2.5)", () => {
+    for (const species of allSpecies) {
+      const seed = shopItemById[`seed-${species.id}`];
+      expect(seed, `seed-${species.id} fehlt`).toBeDefined();
+      expect(seed.kind).toBe("seed");
+      expect(seed.price).toBe(species.basePrice);
+    }
+  });
+
+  it("the daily-offer pool contains only known, non-upgrade items", () => {
+    expect(dailyOfferPool.length).toBeGreaterThan(0);
+    for (const id of dailyOfferPool) {
+      expect(shopItemById[id]).toBeDefined();
+      expect(shopItemById[id].kind).not.toBe("upgrade");
+    }
   });
 });
