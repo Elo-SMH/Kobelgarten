@@ -3,9 +3,11 @@ import { t } from "./i18n";
 import { useGameStore } from "./state/store";
 import { BreedingScreen } from "./ui/screens/BreedingScreen";
 import { KobelScreen } from "./ui/screens/KobelScreen";
+import { LexiconScreen } from "./ui/screens/LexiconScreen";
 import { ShopScreen } from "./ui/screens/ShopScreen";
+import { TalentScreen } from "./ui/screens/TalentScreen";
 
-type Screen = "kobel" | "zucht" | "shop";
+type Screen = "kobel" | "zucht" | "shop" | "talente" | "lexikon";
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("kobel");
@@ -27,6 +29,8 @@ export function App() {
             ["kobel", `🐿️ ${t("nav.kobel")}`],
             ["zucht", `🧬 ${t("nav.zucht")}`],
             ["shop", `🛒 ${t("nav.shop")}`],
+            ["talente", `🌟 ${t("nav.talente")}`],
+            ["lexikon", `📖 ${t("nav.lexikon")}`],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -46,8 +50,12 @@ export function App() {
         <KobelScreen />
       ) : screen === "zucht" ? (
         <BreedingScreen />
-      ) : (
+      ) : screen === "shop" ? (
         <ShopScreen />
+      ) : screen === "talente" ? (
+        <TalentScreen />
+      ) : (
+        <LexiconScreen />
       )}
     </div>
   );

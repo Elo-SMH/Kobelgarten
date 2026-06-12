@@ -1,6 +1,8 @@
 import { CONFIG } from "../../content/config";
 import { gearItems, seedItems, shopItemById } from "../../content/items";
+import { allTalents } from "../../content/skills";
 import { shelfSlotPrice } from "../../engine/economy";
+import { computeModifiers } from "../../engine/skills";
 import { t } from "../../i18n";
 import { todaysOffer } from "../../state/shop";
 import { useGameStore } from "../../state/store";
@@ -9,15 +11,21 @@ import { ShopItemRow } from "./ShopItemRow";
 export function ShopBuyTab() {
   const hazelnuts = useGameStore((state) => state.hazelnuts);
   const slotCount = useGameStore((state) => state.shelf.length);
+  const talentRanks = useGameStore((state) => state.talentRanks);
   const buyShelfSlot = useGameStore((state) => state.buyShelfSlot);
 
   const offer = todaysOffer(new Date());
   const offerItem = offer ? shopItemById[offer.itemId] : null;
 
   const shelfFull = slotCount >= CONFIG.shop.maxShelfSlots;
-  const slotPrice = shelfSlotPrice(
-    slotCount - CONFIG.shelf.slots.length,
-    CONFIG.shop.shelfSlot,
+  // Gleiche Rechnung wie store.buyShelfSlot (inkl. Regal-Schreiner-Talent).
+  const { shelfSlotDiscount } = computeModifiers(talentRanks, allTalents);
+  const slotPrice = Math.max(
+    1,
+    Math.round(
+      shelfSlotPrice(slotCount - CONFIG.shelf.slots.length, CONFIG.shop.shelfSlot) *
+        (1 - shelfSlotDiscount),
+    ),
   );
 
   return (

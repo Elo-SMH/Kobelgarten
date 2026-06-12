@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createPlant,
   fertilizePlant,
+  NEUTRAL_TICK_MODIFIERS,
   phaseOf,
   tickPlant,
   tickPlantMany,
@@ -25,6 +26,7 @@ const config: GrowthConfig = {
   },
   potCaps: { small: 0.6, medium: 1, large: 1.5 },
   fertilizer: { growthFactor: 1.5, durationTicks: 100 },
+  autoWaterThreshold: 0.1,
 };
 
 const species: PlantSpecies = {
@@ -216,5 +218,69 @@ describe("waterPlant", () => {
   it("refills the tank", () => {
     const thirsty: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0.05 };
     expect(waterPlant(thirsty).water).toBe(1);
+  });
+
+  it("Talent-Tank füllt über 1 hinaus und schrumpft volle Tanks nie", () => {
+    const thirsty: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0.05 };
+    expect(waterPlant(thirsty, 1.5).water).toBe(1.5);
+    const overfull: PlantInstance = { ...createPlant("p2", makeGenome(), "large"), water: 1.5 };
+    expect(waterPlant(overfull, 1).water).toBe(1.5);
+  });
+});
+
+describe("TickModifiers (Skills & Ereignisse, M5)", () => {
+  it("growthFactor skaliert das Wachstum", () => {
+    const plant = createPlant("p1", makeGenome(), "large");
+    const slow = tickPlant(plant, species, "window", config, {
+      ...NEUTRAL_TICK_MODIFIERS,
+      growthFactor: 0.5,
+    });
+    const normal = tickPlant(plant, species, "window", config);
+    expect(slow.progress).toBeCloseTo(normal.progress / 2);
+  });
+
+  it("growthFactor 0 stoppt das Wachstum komplett (Sonnenbrand)", () => {
+    const plant = createPlant("p1", makeGenome(), "large");
+    const after = tickPlantMany(plant, species, "window", 10, config, {
+      ...NEUTRAL_TICK_MODIFIERS,
+      growthFactor: 0,
+    });
+    expect(after.progress).toBe(0);
+  });
+
+  it("extraWiltPerTick welkt auch eine versorgte Pflanze", () => {
+    const plant = createPlant("p1", makeGenome(), "large");
+    const after = tickPlantMany(plant, species, "window", 10, config, {
+      ...NEUTRAL_TICK_MODIFIERS,
+      extraWiltPerTick: 0.01,
+    });
+    // Gegossen erholt sie sich pro Tick um 0.004, der Sonnenbrand legt 0.01
+    // drauf: Tick 1 netto +0.01 (Erholung clampt bei 0), danach +0.006.
+    expect(after.wilt).toBeCloseTo(0.01 + 9 * (0.01 - config.wiltRecoveryPerTick));
+  });
+
+  it("wiltFactor dämpft die Trocken-Welke (Welke-Schutz)", () => {
+    const dry: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0 };
+    const after = tickPlant(dry, species, "window", config, {
+      ...NEUTRAL_TICK_MODIFIERS,
+      wiltFactor: 0.5,
+    });
+    expect(after.wilt).toBeCloseTo(config.wiltPerTick / 2);
+  });
+
+  it("autoWater füllt den Tank nach, bevor die Pflanze austrocknet", () => {
+    const low: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0.08 };
+    const after = tickPlant(low, species, "window", config, {
+      ...NEUTRAL_TICK_MODIFIERS,
+      autoWater: true,
+    });
+    expect(after.water).toBeCloseTo(1 - species.waterDrainPerTick);
+    const fine: PlantInstance = { ...createPlant("p2", makeGenome(), "large"), water: 0.5 };
+    expect(
+      tickPlant(fine, species, "window", config, {
+        ...NEUTRAL_TICK_MODIFIERS,
+        autoWater: true,
+      }).water,
+    ).toBeCloseTo(0.5 - species.waterDrainPerTick);
   });
 });

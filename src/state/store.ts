@@ -2,8 +2,21 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CONFIG } from "../content/config";
 import { potItemId, shopItemById } from "../content/items";
-import { speciesById } from "../content/plants";
-import { plantValue, shelfSlotPrice } from "../engine/economy";
+import { speciesById, allSpecies } from "../content/plants";
+import { allTalents, talentById } from "../content/skills";
+import {
+  effectiveSellPrice,
+  plantValue,
+  shelfSlotPrice,
+} from "../engine/economy";
+import {
+  eventCheckBoundaries,
+  eventTickModifiers,
+  matchingCollector,
+  pruneEventsForPlant,
+  pruneExpiredEvents,
+  rollEventsAt,
+} from "../engine/events";
 import { canCross, createSeedGenome, cross, mutate } from "../engine/genetics";
 import {
   createPlant,
@@ -12,8 +25,19 @@ import {
   tickPlantMany,
   waterPlant as applyWatering,
 } from "../engine/growth";
+import { discoverCombos, lexiconCompletion } from "../engine/lexicon";
 import { createRng, hashSeed } from "../engine/rng";
-import type { PotSize } from "../engine/schemas";
+import type { Genome, PotSize, VariegationType } from "../engine/schemas";
+import {
+  computeModifiers,
+  isTierUnlocked,
+  levelForXp,
+  pointsInTree,
+  pointsSpent,
+  respecCost,
+  totalSkillPoints,
+  type Modifiers,
+} from "../engine/skills";
 import { advanceTicks } from "../engine/ticks";
 import {
   createDefaultShelf,
@@ -30,7 +54,7 @@ interface GameStore extends Save {
    * deterministic.
    */
   catchUp: (now: number) => void;
-  /** Kauft ein Shop-Item zum aktuellen Preis (inkl. Tagesangebot). */
+  /** Kauft ein Shop-Item zum aktuellen Preis (inkl. Tagesangebot & Talente). */
   buyItem: (itemId: string) => void;
   /** Kauft einen zusätzlichen Regal-Slot (Preis steigt pro Zukauf). */
   buyShelfSlot: () => void;
@@ -55,6 +79,12 @@ interface GameStore extends Save {
     propaguleId: string,
     potSize: PotSize,
   ) => void;
+  /** Investiert 1 Skillpunkt in ein Talent (Tier muss freigeschaltet sein). */
+  spendTalentPoint: (talentId: string) => void;
+  /** Respec gegen Haselnüsse: setzt alle Talent-Ränge zurück. */
+  respec: () => void;
+  /** Verbraucht 1 Gelbtafel und beendet den Trauermücken-Befall der Pflanze. */
+  treatPlant: (plantId: string) => void;
 }
 
 /** Inventar-Update; Einträge mit Bestand 0 werden entfernt. */
@@ -70,6 +100,51 @@ function withCount(
   return next;
 }
 
+/** Aggregierte Talent-Modifikatoren des aktuellen Spielstands. */
+function modifiersOf(talentRanks: Record<string, number>): Modifiers {
+  return computeModifiers(talentRanks, allTalents);
+}
+
+/** Alle Variegations-Typen, die das Sammler-Eichhörnchen wünschen kann. */
+const VARIEGATION_POOL: VariegationType[] = [
+  ...new Set(allSpecies.flatMap((species) => species.allowedVariegations)),
+];
+
+interface DiscoveryState {
+  tick: number;
+  xp: number;
+  hazelnuts: number;
+  lexicon: Record<string, number>;
+  lexiconRewardsClaimed: number;
+}
+
+/**
+ * Trägt frische Genome ins Lexikon ein: Erstzüchtungen geben XP, erreichte
+ * Komplettierungs-Schwellen schütten ihre Belohnung sofort aus.
+ */
+function withDiscoveries(
+  state: DiscoveryState,
+  genomes: readonly Genome[],
+): Partial<DiscoveryState> {
+  const { lexicon, discovered } = discoverCombos(
+    state.lexicon,
+    genomes,
+    state.tick,
+  );
+  if (discovered.length === 0) return {};
+  let xp = state.xp + discovered.length * CONFIG.progression.xp.discovery;
+  let hazelnuts = state.hazelnuts;
+  let claimed = state.lexiconRewardsClaimed;
+  const completion = lexiconCompletion(lexicon, allSpecies);
+  const rewards = CONFIG.lexicon.rewards;
+  while (claimed < rewards.length && completion >= rewards[claimed].completion) {
+    hazelnuts += rewards[claimed].hazelnuts;
+    xp += rewards[claimed].xp;
+    claimed += 1;
+  }
+  return { lexicon, xp, hazelnuts, lexiconRewardsClaimed: claimed };
+}
+
 export const useGameStore = create<GameStore>()(
   persist<GameStore, [], [], Save>(
     (set, get) => ({
@@ -83,42 +158,104 @@ export const useGameStore = create<GameStore>()(
       wateringCanLevel: 1,
       propagules: {},
       propaguleCounter: 0,
+      xp: 0,
+      talentRanks: {},
+      activeEvents: [],
+      eventCounter: 0,
+      lexicon: {},
+      lexiconRewardsClaimed: 0,
 
       catchUp: (now) => {
-        const { tick, lastTickAt, plants, shelf } = get();
+        const { tick, lastTickAt, plants, shelf, talentRanks } = get();
         const result = advanceTicks({ tick, lastTickAt }, now, CONFIG);
         if (result.state.lastTickAt === lastTickAt) return;
         if (result.applied === 0) {
           set({ tick: result.state.tick, lastTickAt: result.state.lastTickAt });
           return;
         }
+        const mods = modifiersOf(talentRanks);
         const grown = { ...plants };
-        for (const slot of shelf) {
-          if (!slot.plantId) continue;
-          const plant = grown[slot.plantId];
-          if (!plant) continue;
-          const species = speciesById[plant.genome.speciesId];
-          if (!species) continue;
-          grown[slot.plantId] = tickPlantMany(
-            plant,
-            species,
-            slot.placement,
-            result.applied,
-            CONFIG.growth,
-          );
+        let events = get().activeEvents;
+        let eventCounter = get().eventCounter;
+        const toTick = result.state.tick;
+        const interval = CONFIG.events.checkIntervalTicks;
+
+        // Stückweise simulieren: an jeder Ereignis-Grenze wird gewürfelt,
+        // damit auch lange Offline-Fenster Ereignisse erleben und beenden.
+        const boundaries = eventCheckBoundaries(tick, toTick, interval);
+        const stops =
+          boundaries[boundaries.length - 1] === toTick
+            ? boundaries
+            : [...boundaries, toTick];
+        let cursor = tick;
+        for (const stop of stops) {
+          const ticks = stop - cursor;
+          if (ticks > 0) {
+            for (const slot of shelf) {
+              if (!slot.plantId) continue;
+              const plant = grown[slot.plantId];
+              if (!plant) continue;
+              const species = speciesById[plant.genome.speciesId];
+              if (!species) continue;
+              const eventMods = eventTickModifiers(
+                plant.id,
+                events,
+                CONFIG.events,
+              );
+              grown[slot.plantId] = tickPlantMany(
+                plant,
+                species,
+                slot.placement,
+                ticks,
+                CONFIG.growth,
+                {
+                  growthFactor: mods.growthFactor * eventMods.growthFactor,
+                  wiltFactor: mods.wiltFactor,
+                  extraWiltPerTick: eventMods.extraWiltPerTick,
+                  autoWater: mods.autoWater,
+                },
+              );
+            }
+            cursor = stop;
+          }
+          events = pruneExpiredEvents(events, stop);
+          if (boundaries.includes(stop)) {
+            const livingPlants = shelf.flatMap((slot) => {
+              const plant = slot.plantId ? grown[slot.plantId] : undefined;
+              return plant && !plant.dead
+                ? [{ id: plant.id, placement: slot.placement }]
+                : [];
+            });
+            const roll = rollEventsAt(
+              stop,
+              livingPlants,
+              events,
+              eventCounter,
+              VARIEGATION_POOL,
+              CONFIG.events,
+              mods.collectorChanceFactor,
+            );
+            events = [...events, ...roll.spawned];
+            eventCounter = roll.nextEventId;
+          }
         }
+
         set({
-          tick: result.state.tick,
+          tick: toTick,
           lastTickAt: result.state.lastTickAt,
           plants: grown,
+          activeEvents: events,
+          eventCounter,
         });
       },
 
       buyItem: (itemId) => {
-        const { hazelnuts, inventory, wateringCanLevel } = get();
+        const { hazelnuts, inventory, wateringCanLevel, talentRanks } = get();
         const item = shopItemById[itemId];
         if (!item) return;
-        const price = itemPrice(itemId, todaysOffer(new Date()));
+        const mods = modifiersOf(talentRanks);
+        const base = itemPrice(itemId, todaysOffer(new Date()));
+        const price = Math.max(1, Math.round(base * (1 - mods.shopDiscount)));
         if (hazelnuts < price) return;
         if (item.kind === "upgrade") {
           if (item.upgradeId === "wateringCan" && wateringCanLevel >= 2) return;
@@ -132,10 +269,15 @@ export const useGameStore = create<GameStore>()(
       },
 
       buyShelfSlot: () => {
-        const { hazelnuts, shelf } = get();
+        const { hazelnuts, shelf, talentRanks } = get();
         if (shelf.length >= CONFIG.shop.maxShelfSlots) return;
+        const mods = modifiersOf(talentRanks);
         const extraSlots = shelf.length - CONFIG.shelf.slots.length;
-        const price = shelfSlotPrice(extraSlots, CONFIG.shop.shelfSlot);
+        const base = shelfSlotPrice(extraSlots, CONFIG.shop.shelfSlot);
+        const price = Math.max(
+          1,
+          Math.round(base * (1 - mods.shelfSlotDiscount)),
+        );
         if (hazelnuts < price) return;
         const cycle = CONFIG.shelf.extraSlotCycle;
         const placement = cycle[extraSlots % cycle.length];
@@ -146,7 +288,8 @@ export const useGameStore = create<GameStore>()(
       },
 
       plantSeed: (slotIndex, speciesId, potSize) => {
-        const { shelf, plants, plantCounter, inventory } = get();
+        const state = get();
+        const { shelf, plants, plantCounter, inventory } = state;
         const slot = shelf[slotIndex];
         const species = speciesById[speciesId];
         if (!slot || slot.plantId !== null || !species) return;
@@ -164,64 +307,85 @@ export const useGameStore = create<GameStore>()(
           ),
           plantCounter: nextCounter,
           inventory: withCount(withCount(inventory, seedId, -1), potId, -1),
+          ...withDiscoveries(state, [genome]),
         });
       },
 
       waterPlant: (plantId) => {
-        const { plants } = get();
+        const { plants, talentRanks } = get();
         const plant = plants[plantId];
         if (!plant || plant.dead) return;
-        set({ plants: { ...plants, [plantId]: applyWatering(plant) } });
+        const fillTo = 1 + modifiersOf(talentRanks).waterTankBonus;
+        set({ plants: { ...plants, [plantId]: applyWatering(plant, fillTo) } });
       },
 
       waterAll: () => {
-        const { plants, wateringCanLevel } = get();
+        const { plants, wateringCanLevel, talentRanks } = get();
         if (wateringCanLevel < 2) return;
+        const fillTo = 1 + modifiersOf(talentRanks).waterTankBonus;
         set({
           plants: Object.fromEntries(
             Object.entries(plants).map(([id, plant]) => [
               id,
-              plant.dead ? plant : applyWatering(plant),
+              plant.dead ? plant : applyWatering(plant, fillTo),
             ]),
           ),
         });
       },
 
       fertilizePlant: (plantId) => {
-        const { plants, inventory } = get();
+        const { plants, inventory, talentRanks } = get();
         const plant = plants[plantId];
         if (!plant || plant.dead || plant.fertilizerTicks > 0) return;
         if ((inventory["duenger"] ?? 0) < 1) return;
+        const durationFactor = modifiersOf(talentRanks).fertilizerDurationFactor;
         set({
           plants: {
             ...plants,
-            [plantId]: applyFertilizer(plant, CONFIG.growth),
+            [plantId]: applyFertilizer(plant, CONFIG.growth, durationFactor),
           },
           inventory: withCount(inventory, "duenger", -1),
         });
       },
 
       sellPlant: (plantId) => {
-        const { plants, shelf, hazelnuts, inventory } = get();
+        const { plants, shelf, hazelnuts, inventory, talentRanks, activeEvents, xp } =
+          get();
         const plant = plants[plantId];
         if (!plant || plant.dead) return;
         const species = speciesById[plant.genome.speciesId];
         if (!species) return;
+        const mods = modifiersOf(talentRanks);
         const value = plantValue(plant, species, CONFIG.growth, CONFIG.economy);
+        const quest = matchingCollector(
+          activeEvents,
+          plant.genome.variegation.type,
+        );
+        const price = effectiveSellPrice(
+          value,
+          mods.sellPriceFactor,
+          quest?.priceFactor ?? 1,
+        );
+        let xpGain = Math.ceil(price / CONFIG.progression.xp.saleDivisor);
+        if (quest) xpGain += CONFIG.progression.xp.collectorBonus;
         const remaining = { ...plants };
         delete remaining[plantId];
+        let events = pruneEventsForPlant(activeEvents, plantId);
+        if (quest) events = events.filter((event) => event.id !== quest.id);
         set({
-          hazelnuts: hazelnuts + value,
+          hazelnuts: hazelnuts + price,
+          xp: xp + xpGain,
           plants: remaining,
           shelf: shelf.map((entry) =>
             entry.plantId === plantId ? { ...entry, plantId: null } : entry,
           ),
           inventory: withCount(inventory, potItemId(plant.potSize), 1),
+          activeEvents: events,
         });
       },
 
       removePlant: (plantId) => {
-        const { plants, shelf, inventory } = get();
+        const { plants, shelf, inventory, activeEvents } = get();
         const plant = plants[plantId];
         if (!plant || !plant.dead) return;
         const remaining = { ...plants };
@@ -232,29 +396,37 @@ export const useGameStore = create<GameStore>()(
             entry.plantId === plantId ? { ...entry, plantId: null } : entry,
           ),
           inventory: withCount(inventory, potItemId(plant.potSize), 1),
+          activeEvents: pruneEventsForPlant(activeEvents, plantId),
         });
       },
 
       cutCutting: (plantId) => {
-        const { plants, propagules, propaguleCounter } = get();
+        const state = get();
+        const { plants, propagules, propaguleCounter, talentRanks } = state;
         const plant = plants[plantId];
         if (!plant || plant.dead) return;
         const species = speciesById[plant.genome.speciesId];
         if (!species) return;
         const phase = phaseOf(plant.progress, CONFIG.growth);
         if (phase === "seed" || phase === "seedling") return;
+        const mods = modifiersOf(talentRanks);
         const nextCounter = propaguleCounter + 1;
         const id = `prop-${nextCounter}`;
         const rng = createRng(hashSeed(`cut:${plantId}:${nextCounter}`));
-        const genome = mutate(plant.genome, species, rng, CONFIG.genetics);
+        const genome = mutate(plant.genome, species, rng, CONFIG.genetics, {
+          chanceMultiplier: mods.mutationChanceFactor,
+          stabilityBonus: mods.stabilityBonus,
+        });
         set({
           propagules: { ...propagules, [id]: { id, kind: "cutting", genome } },
           propaguleCounter: nextCounter,
+          ...withDiscoveries(state, [genome]),
         });
       },
 
       crossPlants: (plantIdA, plantIdB) => {
-        const { plants, propagules, propaguleCounter } = get();
+        const state = get();
+        const { plants, propagules, propaguleCounter, talentRanks } = state;
         if (plantIdA === plantIdB) return;
         const plantA = plants[plantIdA];
         const plantB = plants[plantIdB];
@@ -267,6 +439,7 @@ export const useGameStore = create<GameStore>()(
         const isAdult = (phase: string) =>
           phase === "adult" || phase === "pracht";
         if (!isAdult(phaseA) || !isAdult(phaseB)) return;
+        const mods = modifiersOf(talentRanks);
         const rng = createRng(
           hashSeed(`cross:${plantIdA}:${plantIdB}:${propaguleCounter}`),
         );
@@ -277,6 +450,11 @@ export const useGameStore = create<GameStore>()(
           speciesB,
           rng,
           CONFIG.genetics,
+          {
+            chanceMultiplier: mods.mutationChanceFactor,
+            stabilityBonus: mods.stabilityBonus,
+            extraSeeds: mods.extraCrossSeeds,
+          },
         );
         const next = { ...propagules };
         let counter = propaguleCounter;
@@ -285,7 +463,11 @@ export const useGameStore = create<GameStore>()(
           const id = `prop-${counter}`;
           next[id] = { id, kind: "seed", genome };
         }
-        set({ propagules: next, propaguleCounter: counter });
+        set({
+          propagules: next,
+          propaguleCounter: counter,
+          ...withDiscoveries(state, seeds),
+        });
       },
 
       plantPropagule: (slotIndex, propaguleId, potSize) => {
@@ -316,6 +498,47 @@ export const useGameStore = create<GameStore>()(
           propagules: remaining,
         });
       },
+
+      spendTalentPoint: (talentId) => {
+        const { talentRanks, xp } = get();
+        const talent = talentById[talentId];
+        if (!talent) return;
+        const rank = talentRanks[talentId] ?? 0;
+        if (rank >= talent.maxRank) return;
+        const level = levelForXp(xp, CONFIG.progression.xpCurve);
+        const available = totalSkillPoints(level) - pointsSpent(talentRanks);
+        if (available < 1) return;
+        const treePoints = pointsInTree(talentRanks, allTalents, talent.tree);
+        if (
+          !isTierUnlocked(talent.tier, treePoints, CONFIG.progression.tierThresholds)
+        ) {
+          return;
+        }
+        set({ talentRanks: { ...talentRanks, [talentId]: rank + 1 } });
+      },
+
+      respec: () => {
+        const { talentRanks, hazelnuts } = get();
+        const spent = pointsSpent(talentRanks);
+        if (spent === 0) return;
+        const cost = respecCost(spent, CONFIG.progression);
+        if (hazelnuts < cost) return;
+        set({ talentRanks: {}, hazelnuts: hazelnuts - cost });
+      },
+
+      treatPlant: (plantId) => {
+        const { activeEvents, inventory } = get();
+        const infested = activeEvents.some(
+          (event) => event.kind === "gnats" && event.plantId === plantId,
+        );
+        if (!infested || (inventory["gelbtafeln"] ?? 0) < 1) return;
+        set({
+          activeEvents: activeEvents.filter(
+            (event) => event.kind !== "gnats" || event.plantId !== plantId,
+          ),
+          inventory: withCount(inventory, "gelbtafeln", -1),
+        });
+      },
     }),
     {
       name: "kobelgarten-save",
@@ -332,6 +555,12 @@ export const useGameStore = create<GameStore>()(
         wateringCanLevel: state.wateringCanLevel,
         propagules: state.propagules,
         propaguleCounter: state.propaguleCounter,
+        xp: state.xp,
+        talentRanks: state.talentRanks,
+        activeEvents: state.activeEvents,
+        eventCounter: state.eventCounter,
+        lexicon: state.lexicon,
+        lexiconRewardsClaimed: state.lexiconRewardsClaimed,
       }),
     },
   ),

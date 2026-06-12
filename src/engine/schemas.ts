@@ -67,6 +67,7 @@ export const shopItemSchema = z.discriminatedUnion("kind", [
   z.object({ ...shopItemBase, kind: z.literal("seed"), speciesId: z.string().min(1) }),
   z.object({ ...shopItemBase, kind: z.literal("pot"), potSize: potSizeSchema }),
   z.object({ ...shopItemBase, kind: z.literal("fertilizer") }),
+  z.object({ ...shopItemBase, kind: z.literal("trap") }),
   z.object({
     ...shopItemBase,
     kind: z.literal("upgrade"),
@@ -74,6 +75,57 @@ export const shopItemSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 export type ShopItem = z.infer<typeof shopItemSchema>;
+
+export const talentTreeSchema = z.enum(["gaertner", "zuechter", "haendler"]);
+export type TalentTree = z.infer<typeof talentTreeSchema>;
+
+/**
+ * Modifikator-Statistiken der Skill-Pipeline (engine/skills.ts). Die Engine
+ * kennt nur diese Stats, nie einzelne Talente — neue Talente sind reine
+ * Content-Daten, die auf vorhandene Stats wirken.
+ */
+export const multiplyStatSchema = z.enum([
+  "growthFactor",
+  "wiltFactor",
+  "fertilizerDurationFactor",
+  "mutationChanceFactor",
+  "sellPriceFactor",
+  "collectorChanceFactor",
+]);
+export type MultiplyStat = z.infer<typeof multiplyStatSchema>;
+
+export const addStatSchema = z.enum([
+  "waterTankBonus",
+  "stabilityBonus",
+  "extraCrossSeeds",
+  "shopDiscount",
+  "shelfSlotDiscount",
+]);
+export type AddStat = z.infer<typeof addStatSchema>;
+
+export const enableStatSchema = z.enum(["autoWater", "revealGenes"]);
+export type EnableStat = z.infer<typeof enableStatSchema>;
+
+/** Wirkung eines Talents, pro investiertem Rang angewendet. */
+export const talentEffectSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("multiply"), stat: multiplyStatSchema, value: z.number().positive() }),
+  z.object({ kind: z.literal("add"), stat: addStatSchema, value: z.number() }),
+  z.object({ kind: z.literal("enable"), stat: enableStatSchema }),
+]);
+export type TalentEffect = z.infer<typeof talentEffectSchema>;
+
+export const talentSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  tree: talentTreeSchema,
+  /** Tier 1–3; schaltet sich per investierter Punkte im Baum frei. */
+  tier: z.number().int().min(1).max(3),
+  /** Deutscher Anzeigename. */
+  name: z.string().min(1),
+  emoji: z.string().min(1),
+  maxRank: z.number().int().min(1).max(5),
+  effect: talentEffectSchema,
+});
+export type Talent = z.infer<typeof talentSchema>;
 
 const hexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i, "expected #rrggbb");
 

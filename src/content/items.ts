@@ -51,6 +51,13 @@ const rawGearItems: ShopItem[] = [
     price: CONFIG.shop.fertilizerPrice,
   },
   {
+    kind: "trap",
+    id: "gelbtafeln",
+    name: "Gelbtafeln",
+    emoji: "🟨",
+    price: CONFIG.shop.gelbtafelnPrice,
+  },
+  {
     kind: "upgrade",
     id: "giesskanne-gross",
     name: "Große Gießkanne",

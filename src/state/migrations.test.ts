@@ -14,6 +14,12 @@ describe("migrateSave", () => {
       wateringCanLevel: 1,
       propagules: {},
       propaguleCounter: 0,
+      xp: 0,
+      talentRanks: {},
+      activeEvents: [],
+      eventCounter: 0,
+      lexicon: {},
+      lexiconRewardsClaimed: 0,
     };
     expect(migrateSave(save, SAVE_VERSION)).toEqual(save);
   });
@@ -37,6 +43,12 @@ describe("migrateSave", () => {
       wateringCanLevel: 1,
       propagules: {},
       propaguleCounter: 0,
+      xp: 0,
+      talentRanks: {},
+      activeEvents: [],
+      eventCounter: 0,
+      lexicon: {},
+      lexiconRewardsClaimed: 0,
     });
   });
 
@@ -52,10 +64,46 @@ describe("migrateSave", () => {
       wateringCanLevel: 2,
     };
     const migrated = migrateSave(v3, 3);
-    expect(migrated).toEqual({
-      ...v3,
-      propagules: {},
-      propaguleCounter: 0,
+    expect(migrated.propagules).toEqual({});
+    expect(migrated.propaguleCounter).toBe(0);
+  });
+
+  it("v4 → v5 seeds the lexicon from existing plants and propagules", () => {
+    const genome = (speciesId: string, type: string) => ({
+      speciesId,
+      growthRate: 1,
+      size: 1,
+      hueShift: 0,
+      hardiness: 1,
+      variegation: { type, coverage: type === "none" ? 0 : 0.2, stability: 1 },
+    });
+    const v4 = {
+      tick: 500,
+      lastTickAt: 1_000_000,
+      hazelnuts: 10,
+      plants: {
+        "plant-1": { id: "plant-1", genome: genome("pothos", "none") },
+        "plant-2": { id: "plant-2", genome: genome("monstera", "albo") },
+      },
+      shelf: [],
+      plantCounter: 2,
+      inventory: {},
+      wateringCanLevel: 1,
+      propagules: {
+        "prop-1": { id: "prop-1", kind: "seed", genome: genome("pothos", "splash") },
+      },
+      propaguleCounter: 1,
+    };
+    const migrated = migrateSave(v4, 4);
+    expect(migrated.xp).toBe(0);
+    expect(migrated.talentRanks).toEqual({});
+    expect(migrated.activeEvents).toEqual([]);
+    expect(migrated.eventCounter).toBe(0);
+    expect(migrated.lexiconRewardsClaimed).toBe(0);
+    expect(migrated.lexicon).toEqual({
+      "pothos:none": 500,
+      "monstera:albo": 500,
+      "pothos:splash": 500,
     });
   });
 

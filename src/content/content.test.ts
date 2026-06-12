@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { plantSpeciesSchema, shopItemSchema } from "../engine/schemas";
+import {
+  plantSpeciesSchema,
+  shopItemSchema,
+  talentSchema,
+  talentTreeSchema,
+} from "../engine/schemas";
+import de from "../i18n/de.json";
+import { CONFIG } from "./config";
 import { allShopItems, dailyOfferPool, shopItemById } from "./items";
 import { allSpecies, speciesById } from "./plants";
+import { allTalents, talentById } from "./skills";
 
 // Auto-discover every plant file so a forgotten registry entry or an
 // invalid new file fails this contract test, not the running game.
@@ -83,6 +91,49 @@ describe("content contract: shop items", () => {
     for (const id of dailyOfferPool) {
       expect(shopItemById[id]).toBeDefined();
       expect(shopItemById[id].kind).not.toBe("upgrade");
+    }
+  });
+});
+
+describe("content contract: talents (PLAN 2.4)", () => {
+  it("every talent validates against the schema", () => {
+    for (const talent of allTalents) {
+      const parsed = talentSchema.safeParse(talent);
+      expect(
+        parsed.success,
+        `${talent.id}: ${parsed.success ? "ok" : parsed.error.message}`,
+      ).toBe(true);
+    }
+  });
+
+  it("talent ids are unique and registered in the index", () => {
+    const ids = allTalents.map((talent) => talent.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const talent of allTalents) {
+      expect(talentById[talent.id]).toBe(talent);
+    }
+  });
+
+  it("each of the 3 trees has 6–8 talents and reaches tier 3", () => {
+    for (const tree of talentTreeSchema.options) {
+      const talents = allTalents.filter((talent) => talent.tree === tree);
+      expect(talents.length).toBeGreaterThanOrEqual(6);
+      expect(talents.length).toBeLessThanOrEqual(8);
+      expect(Math.max(...talents.map((talent) => talent.tier))).toBe(3);
+    }
+  });
+
+  it("every tier has a threshold and every talent a description in de.json", () => {
+    const messages = de as Record<string, string>;
+    for (const talent of allTalents) {
+      expect(
+        CONFIG.progression.tierThresholds[talent.tier - 1],
+        `Tier ${talent.tier} ohne Schwelle`,
+      ).toBeDefined();
+      expect(
+        messages[`talent.${talent.id}.desc`],
+        `talent.${talent.id}.desc fehlt in de.json`,
+      ).toBeDefined();
     }
   });
 });

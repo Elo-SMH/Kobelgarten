@@ -1,13 +1,19 @@
+import { CONFIG } from "../../content/config";
+import { levelProgress } from "../../engine/skills";
 import { t } from "../../i18n";
 import { useGameStore } from "../../state/store";
+import { EventBanner } from "../components/EventBanner";
 import { ShelfSlotCard } from "../components/ShelfSlotCard";
 
 export function KobelScreen() {
   const tick = useGameStore((state) => state.tick);
   const hazelnuts = useGameStore((state) => state.hazelnuts);
+  const xp = useGameStore((state) => state.xp);
   const slotCount = useGameStore((state) => state.shelf.length);
   const wateringCanLevel = useGameStore((state) => state.wateringCanLevel);
   const waterAll = useGameStore((state) => state.waterAll);
+
+  const progress = levelProgress(xp, CONFIG.progression.xpCurve);
 
   return (
     <main className="flex flex-col items-center px-4 py-8">
@@ -33,7 +39,25 @@ export function KobelScreen() {
             🌰 {hazelnuts}
           </span>
         </div>
+        <div className="rounded-2xl border border-cream-300 bg-cream-50 px-5 py-3 shadow-sm">
+          <span className="block text-xs uppercase tracking-wide text-hazel-500">
+            {t("kobel.levelLabel")}
+          </span>
+          <span className="text-2xl font-semibold tabular-nums">
+            ⭐ {progress.level}
+          </span>
+          <span className="block text-xs text-hazel-500 tabular-nums">
+            {progress.needed > 0
+              ? t("kobel.xpProgress", {
+                  into: progress.into,
+                  needed: progress.needed,
+                })
+              : t("kobel.maxLevel")}
+          </span>
+        </div>
       </div>
+
+      <EventBanner />
 
       <section className="w-full max-w-3xl">
         <div className="mb-3 flex items-center justify-center gap-3">

@@ -225,20 +225,43 @@ describe("rollVariegation — Würfeltabelle PLAN 2.2", () => {
   it("mutability und externer Multiplikator skalieren alles außer der Reversion", () => {
     const mutable = makeSpecies({ mutability: 0.04 }); // 2× baseline
     const rng = fakeRng({ chance: [false, false, false] });
-    rollVariegation(splash, mutable, rng, variegationConfig, 2);
+    rollVariegation(splash, mutable, rng, variegationConfig, {
+      chanceMultiplier: 2,
+    });
     // Reversion bleibt 0.125; Verstärkung 0.1×4, Sprung 0.03×4
     expect(rng.chanceArgs).toEqual([0.125, 0.4, 0.12]);
 
     const rng2 = fakeRng({ chance: [false] });
-    rollVariegation(none, mutable, rng2, variegationConfig, 2);
+    rollVariegation(none, mutable, rng2, variegationConfig, {
+      chanceMultiplier: 2,
+    });
     expect(rng2.chanceArgs).toEqual([0.08]); // 0.02 × 4
   });
 
   it("skalierte Chancen werden auf 1 gedeckelt (edge case)", () => {
     const extreme = makeSpecies({ mutability: 1 });
     const rng = fakeRng({ chance: [false] });
-    rollVariegation(none, extreme, rng, variegationConfig, 100);
+    rollVariegation(none, extreme, rng, variegationConfig, {
+      chanceMultiplier: 100,
+    });
     expect(rng.chanceArgs).toEqual([1]);
+  });
+
+  it("stabilityBonus hebt die Stabilität frischer Variegationen (M5-Talente)", () => {
+    const rng = fakeRng({ chance: [true], pickIndex: [0], next: [0.5, 0] });
+    const result = rollVariegation(none, makeSpecies(), rng, variegationConfig, {
+      stabilityBonus: 0.2,
+    });
+    // freshStability-Spanne [0.3, 0.8] bei next()=0 → 0.3, plus Bonus 0.2
+    expect(result.stability).toBeCloseTo(0.5);
+  });
+
+  it("stabilityBonus bleibt auf 1 gedeckelt (edge case)", () => {
+    const rng = fakeRng({ chance: [true], pickIndex: [0], next: [0.5, 1] });
+    const result = rollVariegation(none, makeSpecies(), rng, variegationConfig, {
+      stabilityBonus: 5,
+    });
+    expect(result.stability).toBe(1);
   });
 });
 
@@ -392,6 +415,29 @@ describe("canCross / cross — Kreuzung (PLAN 2.1)", () => {
     const a = cross(genomeA, speciesA, genomeB, speciesB, createRng(42), config);
     const b = cross(genomeA, speciesA, genomeB, speciesB, createRng(42), config);
     expect(a).toEqual(b);
+  });
+
+  it("extraSeeds erhöht die Samenzahl (Züchter-Talent, M5)", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const plain = cross(
+        genomeA,
+        speciesA,
+        genomeB,
+        speciesB,
+        createRng(seed),
+        config,
+      );
+      const boosted = cross(
+        genomeA,
+        speciesA,
+        genomeB,
+        speciesB,
+        createRng(seed),
+        config,
+        { extraSeeds: 1 },
+      );
+      expect(boosted.length).toBe(plain.length + 1);
+    }
   });
 
   it("mischt über viele Kreuzungen Gene beider Eltern (fixe Seeds)", () => {

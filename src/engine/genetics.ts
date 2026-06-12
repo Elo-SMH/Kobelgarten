@@ -45,6 +45,19 @@ export interface GeneticsConfig {
 
 const COVERAGE_MAX = 0.6;
 
+/**
+ * Zucht-Modifikatoren aus der Skill-Pipeline (engine/skills.ts) und Items:
+ * die Genetik kennt keine Talente, nur diese Stellschrauben.
+ */
+export interface BreedingMods {
+  /** × auf alle Chancen der Würfeltabelle (außer Reversion). */
+  chanceMultiplier?: number;
+  /** + auf die stability frisch gewürfelter Variegationen. */
+  stabilityBonus?: number;
+  /** + Samen pro Kreuzung. */
+  extraSeeds?: number;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -93,10 +106,12 @@ export function rollVariegation(
   species: PlantSpecies,
   rng: Rng,
   config: VariegationConfig,
-  chanceMultiplier = 1,
+  mods: BreedingMods = {},
 ): Variegation {
   const factor =
-    (species.mutability / config.baselineMutability) * chanceMultiplier;
+    (species.mutability / config.baselineMutability) *
+    (mods.chanceMultiplier ?? 1);
+  const stabilityBonus = mods.stabilityBonus ?? 0;
 
   if (variegation.type === "none") {
     if (!rng.chance(clamp(config.spontaneousChance * factor, 0, 1))) {
@@ -105,7 +120,7 @@ export function rollVariegation(
     return {
       type: rng.pick(species.allowedVariegations),
       coverage: clamp(uniform(rng, config.spontaneousCoverage), 0, COVERAGE_MAX),
-      stability: clamp(uniform(rng, config.freshStability), 0, 1),
+      stability: clamp(uniform(rng, config.freshStability) + stabilityBonus, 0, 1),
     };
   }
 
@@ -145,7 +160,7 @@ export function mutate(
   species: PlantSpecies,
   rng: Rng,
   config: GeneticsConfig,
-  chanceMultiplier = 1,
+  mods: BreedingMods = {},
 ): Genome {
   const result: Genome = {
     speciesId: genome.speciesId,
@@ -162,7 +177,7 @@ export function mutate(
       species,
       rng,
       config.variegation,
-      chanceMultiplier,
+      mods,
     ),
   };
   return genomeSchema.parse(result);
@@ -187,7 +202,7 @@ export function cross(
   speciesB: PlantSpecies,
   rng: Rng,
   config: GeneticsConfig,
-  chanceMultiplier = 1,
+  mods: BreedingMods = {},
 ): Genome[] {
   if (!canCross(speciesA, speciesB)) {
     throw new Error(
@@ -195,7 +210,7 @@ export function cross(
     );
   }
   const [minSeeds, maxSeeds] = config.seedsPerCross;
-  const count = rng.int(minSeeds, maxSeeds + 1);
+  const count = rng.int(minSeeds, maxSeeds + 1) + Math.max(0, mods.extraSeeds ?? 0);
   const seeds: Genome[] = [];
   for (let i = 0; i < count; i++) {
     const fromA = () => rng.chance(0.5);
@@ -210,7 +225,7 @@ export function cross(
         ? { ...genomeA.variegation }
         : { ...genomeB.variegation },
     };
-    seeds.push(mutate(base, species, rng, config, chanceMultiplier));
+    seeds.push(mutate(base, species, rng, config, mods));
   }
   return seeds;
 }

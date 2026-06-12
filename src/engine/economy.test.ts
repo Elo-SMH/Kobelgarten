@@ -24,6 +24,7 @@ const growthConfig: GrowthConfig = {
   },
   potCaps: { small: 0.6, medium: 1, large: 1.5 },
   fertilizer: { growthFactor: 1.5, durationTicks: 360 },
+  autoWaterThreshold: 0.1,
 };
 
 const economy: EconomyConfig = {

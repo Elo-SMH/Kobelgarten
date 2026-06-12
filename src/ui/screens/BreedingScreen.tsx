@@ -1,20 +1,36 @@
 import { useState } from "react";
 import { CONFIG } from "../../content/config";
 import { speciesById } from "../../content/plants";
+import { allTalents } from "../../content/skills";
 import { canCross } from "../../engine/genetics";
 import { phaseOf, type PlantInstance } from "../../engine/growth";
+import type { Genome } from "../../engine/schemas";
+import { computeModifiers } from "../../engine/skills";
 import { t } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { PlantSVG } from "../components/PlantSVG";
 import { variegationLabel } from "../components/variegation";
 
+/** Genwerte-Zeile fürs Geschulte Auge (Züchter-Talent). */
+function geneReadout(genome: Genome): string {
+  return t("zucht.geneReadout", {
+    growth: genome.growthRate.toFixed(2),
+    size: genome.size.toFixed(2),
+    hardiness: genome.hardiness.toFixed(2),
+    stability: genome.variegation.stability.toFixed(2),
+  });
+}
+
 export function BreedingScreen() {
   const plants = useGameStore((state) => state.plants);
   const shelf = useGameStore((state) => state.shelf);
   const propagules = useGameStore((state) => state.propagules);
+  const talentRanks = useGameStore((state) => state.talentRanks);
   const cutCutting = useGameStore((state) => state.cutCutting);
   const crossPlants = useGameStore((state) => state.crossPlants);
   const [parents, setParents] = useState<string[]>([]);
+
+  const { revealGenes } = computeModifiers(talentRanks, allTalents);
 
   // Regal-Reihenfolge, damit die Liste stabil bleibt.
   const shelfPlants = shelf
@@ -84,6 +100,11 @@ export function BreedingScreen() {
                   <span className="text-xs text-hazel-500">
                     {variegationLabel(plant.genome.variegation)}
                   </span>
+                  {revealGenes && (
+                    <span className="text-center text-[10px] text-hazel-500">
+                      🔍 {geneReadout(plant.genome)}
+                    </span>
+                  )}
                   <PlantSVG plant={plant} species={species} />
                   <button
                     onClick={() => cutCutting(plant.id)}
@@ -129,6 +150,11 @@ export function BreedingScreen() {
                     <span className="text-xs text-hazel-500">
                       {variegationLabel(plant.genome.variegation)}
                     </span>
+                    {revealGenes && (
+                      <span className="text-center text-[10px] text-hazel-500">
+                        🔍 {geneReadout(plant.genome)}
+                      </span>
+                    )}
                     <PlantSVG plant={plant} species={species} />
                     {isSelected && (
                       <span className="rounded-full bg-leaf-500 px-2 py-0.5 text-xs text-white">

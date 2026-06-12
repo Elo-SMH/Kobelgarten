@@ -1,12 +1,14 @@
 import { CONFIG } from "../content/config";
+import type { ActiveEvent } from "../engine/events";
 import type { PlantInstance } from "../engine/growth";
+import { comboKey } from "../engine/lexicon";
 import type { Genome, LightPlacement } from "../engine/schemas";
 
 /**
  * Versioned saves. Any change to the save shape requires bumping
  * SAVE_VERSION and adding a migration step below — never break old saves.
  */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface SaveV1 {
   tick: number;
@@ -49,8 +51,23 @@ export interface SaveV4 extends SaveV3 {
   propaguleCounter: number;
 }
 
+export interface SaveV5 extends SaveV4 {
+  /** Gesamt-XP; Level und Skillpunkte werden daraus abgeleitet. */
+  xp: number;
+  /** Investierte Talent-Ränge, keyed by Talent-Id. */
+  talentRanks: Record<string, number>;
+  /** Laufende Zufallsereignisse (Trauermücken, Sonnenbrand, Sammler-Quest). */
+  activeEvents: ActiveEvent[];
+  /** Monoton steigender Zähler für eindeutige Ereignis-IDs. */
+  eventCounter: number;
+  /** Pflanzenlexikon: comboKey (Art:Variegation) → Tick der Entdeckung. */
+  lexicon: Record<string, number>;
+  /** Anzahl bereits ausgezahlter Komplettierungs-Belohnungen. */
+  lexiconRewardsClaimed: number;
+}
+
 /** The current save shape. */
-export type Save = SaveV4;
+export type Save = SaveV5;
 
 export function createDefaultShelf(): ShelfSlotState[] {
   return CONFIG.shelf.slots.map((placement) => ({ placement, plantId: null }));
@@ -88,6 +105,37 @@ const migrations: Record<number, Migration> = {
     propagules: {},
     propaguleCounter: 0,
   }),
+  // v4 → v5: Progression (M5). Das Lexikon startet mit allen Kombis, die
+  // schon im Kobel oder Vermehrungsgut stehen — ohne rückwirkende XP.
+  5: (state) => {
+    const tick = typeof state.tick === "number" ? state.tick : 0;
+    const lexicon: Record<string, number> = {};
+    const register = (genome: Genome | undefined) => {
+      if (!genome) return;
+      lexicon[comboKey(genome.speciesId, genome.variegation.type)] ??= tick;
+    };
+    const plants = (state.plants ?? {}) as Record<
+      string,
+      { genome?: Genome } | undefined
+    >;
+    for (const plant of Object.values(plants)) register(plant?.genome);
+    const propagules = (state.propagules ?? {}) as Record<
+      string,
+      { genome?: Genome } | undefined
+    >;
+    for (const propagule of Object.values(propagules)) {
+      register(propagule?.genome);
+    }
+    return {
+      ...state,
+      xp: 0,
+      talentRanks: {},
+      activeEvents: [],
+      eventCounter: 0,
+      lexicon,
+      lexiconRewardsClaimed: 0,
+    };
+  },
 };
 
 export function migrateSave(persisted: unknown, fromVersion: number): Save {

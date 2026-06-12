@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { CONFIG } from "../../content/config";
 import { speciesById } from "../../content/plants";
-import { plantValue } from "../../engine/economy";
+import { allTalents } from "../../content/skills";
+import { effectiveSellPrice, plantValue } from "../../engine/economy";
+import { matchingCollector } from "../../engine/events";
 import { phaseOf, type GrowthPhase } from "../../engine/growth";
+import { computeModifiers } from "../../engine/skills";
 import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -25,8 +28,13 @@ interface PendingSale {
 export function ShopSellTab() {
   const shelf = useGameStore((state) => state.shelf);
   const plants = useGameStore((state) => state.plants);
+  const talentRanks = useGameStore((state) => state.talentRanks);
+  const activeEvents = useGameStore((state) => state.activeEvents);
   const sellPlant = useGameStore((state) => state.sellPlant);
   const [pending, setPending] = useState<PendingSale | null>(null);
+
+  // Gleiche Rechnung wie store.sellPlant: Wertformel × Talente × Sammler.
+  const { sellPriceFactor } = computeModifiers(talentRanks, allTalents);
 
   const sellable = shelf.flatMap((slot) => {
     const plant = slot.plantId ? plants[slot.plantId] : undefined;
@@ -48,7 +56,16 @@ export function ShopSellTab() {
     <>
       <ul className="flex flex-col gap-2">
         {sellable.map(({ plant, species }) => {
-          const value = plantValue(plant, species, CONFIG.growth, CONFIG.economy);
+          const baseValue = plantValue(plant, species, CONFIG.growth, CONFIG.economy);
+          const quest = matchingCollector(
+            activeEvents,
+            plant.genome.variegation.type,
+          );
+          const value = effectiveSellPrice(
+            baseValue,
+            sellPriceFactor,
+            quest?.priceFactor ?? 1,
+          );
           const phase = phaseOf(plant.progress, CONFIG.growth);
           return (
             <li
@@ -61,6 +78,12 @@ export function ShopSellTab() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{species.name}</p>
                 <p className="text-xs text-hazel-500">{t(PHASE_KEYS[phase])}</p>
+                {quest && (
+                  <p className="text-xs font-semibold text-hazel-700">
+                    🐿️{" "}
+                    {t("shop.collectorBadge", { factor: quest.priceFactor })}
+                  </p>
+                )}
               </div>
               <span className="font-semibold tabular-nums">🌰 {value}</span>
               <button

@@ -43,6 +43,19 @@ export function plantValue(
   return Math.max(1, Math.round(species.basePrice * sizeFactor * variegationFactor));
 }
 
+/**
+ * Tatsächlicher Verkaufserlös: Grundwert aus der Wertformel × Händler-Talente
+ * × Sammler-Quest (PLAN 2.3: zahlt 2× für die gewünschte Variegation).
+ */
+export function effectiveSellPrice(
+  baseValue: number,
+  sellPriceFactor: number,
+  collectorFactor = 1,
+): number {
+  if (baseValue <= 0) return 0;
+  return Math.max(1, Math.round(baseValue * sellPriceFactor * collectorFactor));
+}
+
 export interface ShelfSlotPricing {
   basePrice: number;
   /** Preis-Faktor pro bereits gekauftem Zusatz-Slot. */

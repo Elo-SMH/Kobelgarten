@@ -1,5 +1,7 @@
+import { allTalents } from "../../content/skills";
 import type { DailyOffer } from "../../engine/economy";
 import type { ShopItem } from "../../engine/schemas";
+import { computeModifiers } from "../../engine/skills";
 import { t, type MessageKey } from "../../i18n";
 import { itemPrice } from "../../state/shop";
 import { useGameStore } from "../../state/store";
@@ -9,6 +11,7 @@ const DESC_KEYS: Record<string, MessageKey> = {
   "pot-medium": "item.pot-medium.desc",
   "pot-large": "item.pot-large.desc",
   duenger: "item.duenger.desc",
+  gelbtafeln: "item.gelbtafeln.desc",
   "giesskanne-gross": "item.giesskanne-gross.desc",
 };
 
@@ -21,9 +24,15 @@ export function ShopItemRow({ item, offer }: ShopItemRowProps) {
   const hazelnuts = useGameStore((state) => state.hazelnuts);
   const owned = useGameStore((state) => state.inventory[item.id] ?? 0);
   const wateringCanLevel = useGameStore((state) => state.wateringCanLevel);
+  const talentRanks = useGameStore((state) => state.talentRanks);
   const buyItem = useGameStore((state) => state.buyItem);
 
-  const price = itemPrice(item.id, offer);
+  // Gleiche Rechnung wie store.buyItem: Tagesangebot, dann Talent-Rabatt.
+  const { shopDiscount } = computeModifiers(talentRanks, allTalents);
+  const price = Math.max(
+    1,
+    Math.round(itemPrice(item.id, offer) * (1 - shopDiscount)),
+  );
   const discounted = price < item.price;
   const alreadyUpgraded =
     item.kind === "upgrade" &&
