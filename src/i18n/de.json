@@ -1,8 +1,22 @@
 {
   "app.title": "Kobelgarten",
   "app.tagline": "Dein gemütlicher Pflanzen-Kobel",
-  "kobel.heading": "Dein Kobel",
-  "kobel.empty": "Noch ist es leer hier oben. Bald wachsen hier deine ersten Pflanzen!",
+  "kobel.heading": "Dein Regal",
   "kobel.tickLabel": "Tick",
-  "kobel.hazelnutsLabel": "Haselnüsse"
+  "kobel.hazelnutsLabel": "Haselnüsse",
+  "phase.seed": "Samen",
+  "phase.seedling": "Sämling",
+  "phase.juvenile": "Jungpflanze",
+  "phase.adult": "Ausgewachsen",
+  "phase.pracht": "Prachtexemplar",
+  "plant.waterAction": "Gießen",
+  "plant.removeAction": "Entsorgen",
+  "plant.deadLabel": "Eingegangen",
+  "plant.waterNeed": "Wasser",
+  "plant.healthNeed": "Zustand",
+  "plant.growthLabel": "Wachstum",
+  "slot.window": "Fensterplatz",
+  "slot.shade": "Schattenplatz",
+  "slot.empty": "Freier Platz",
+  "slot.plantPrompt": "Was möchtest du einpflanzen?"
 }

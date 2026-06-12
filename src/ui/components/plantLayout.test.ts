@@ -1,0 +1,85 @@
+import { describe, expect, it } from "vitest";
+import { createPlant, type GrowthConfig, type PlantInstance } from "../../engine/growth";
+import type { Genome } from "../../engine/schemas";
+import { plantLayout } from "./plantLayout";
+
+const config: GrowthConfig = {
+  prachtProgress: 1.5,
+  phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
+  lowWaterThreshold: 0.2,
+  lowWaterGrowthFactor: 0.5,
+  wiltPerTick: 0.002,
+  wiltRecoveryPerTick: 0.004,
+  lightFactors: {
+    low: { window: 0.9, shade: 1 },
+    medium: { window: 1, shade: 0.75 },
+    bright: { window: 1, shade: 0.5 },
+  },
+};
+
+function makePlant(id: string, progress: number, genome: Partial<Genome> = {}): PlantInstance {
+  return {
+    ...createPlant(id, {
+      speciesId: "pothos",
+      growthRate: 1,
+      size: 1,
+      hueShift: 0,
+      hardiness: 1,
+      variegation: { type: "none", coverage: 0, stability: 1 },
+      ...genome,
+    }),
+    progress,
+  };
+}
+
+describe("plantLayout", () => {
+  it("is deterministic per plant id", () => {
+    const a = plantLayout(makePlant("plant-7", 1.2), config);
+    const b = plantLayout(makePlant("plant-7", 1.2), config);
+    expect(a).toEqual(b);
+  });
+
+  it("different plant ids produce different jitter", () => {
+    const a = plantLayout(makePlant("plant-1", 1.2), config);
+    const b = plantLayout(makePlant("plant-2", 1.2), config);
+    expect(a).not.toEqual(b);
+  });
+
+  it("leaf count follows the growth phase", () => {
+    expect(plantLayout(makePlant("p", 0), config).leaves).toHaveLength(0);
+    expect(plantLayout(makePlant("p", 0.1), config).leaves).toHaveLength(2);
+    expect(plantLayout(makePlant("p", 0.5), config).leaves).toHaveLength(4);
+    expect(plantLayout(makePlant("p", 1.1), config).leaves).toHaveLength(6);
+    expect(plantLayout(makePlant("p", 1.5), config).leaves).toHaveLength(8);
+  });
+
+  it("existing leaves stay put when new ones appear (edge: stable prefix)", () => {
+    const juvenile = plantLayout(makePlant("p", 0.5), config);
+    const pracht = plantLayout(makePlant("p", 1.5), config);
+    for (const [index, leaf] of juvenile.leaves.entries()) {
+      expect(pracht.leaves[index].angle).toBe(leaf.angle);
+      expect(pracht.leaves[index].varieg).toBe(leaf.varieg);
+    }
+  });
+
+  it("genome size scales the leaves", () => {
+    const small = plantLayout(makePlant("p", 1.5, { size: 0.7 }), config);
+    const big = plantLayout(makePlant("p", 1.5, { size: 1.3 }), config);
+    for (const [index, leaf] of small.leaves.entries()) {
+      expect(big.leaves[index].length).toBeGreaterThan(leaf.length);
+      expect(big.leaves[index].scale).toBeGreaterThan(leaf.scale);
+    }
+  });
+
+  it("full coverage marks every leaf variegated, zero coverage none", () => {
+    const none = plantLayout(makePlant("p", 1.5), config);
+    expect(none.leaves.every((leaf) => !leaf.varieg)).toBe(true);
+    const full = plantLayout(
+      makePlant("p", 1.5, {
+        variegation: { type: "albo", coverage: 0.6, stability: 1 },
+      }),
+      config,
+    );
+    expect(full.leaves.some((leaf) => leaf.varieg)).toBe(true);
+  });
+});

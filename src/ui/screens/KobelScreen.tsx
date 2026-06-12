@@ -1,9 +1,11 @@
 import { t } from "../../i18n";
 import { useGameStore } from "../../state/store";
+import { ShelfSlotCard } from "../components/ShelfSlotCard";
 
 export function KobelScreen() {
   const tick = useGameStore((state) => state.tick);
   const hazelnuts = useGameStore((state) => state.hazelnuts);
+  const slotCount = useGameStore((state) => state.shelf.length);
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-cream-100 px-4 py-8 text-hazel-900">
@@ -31,11 +33,15 @@ export function KobelScreen() {
         </div>
       </div>
 
-      <section className="flex w-full max-w-2xl flex-1 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-leaf-300 bg-leaf-100/50 p-12 text-center">
-        <h2 className="mb-2 text-2xl font-semibold text-leaf-900">
+      <section className="w-full max-w-3xl">
+        <h2 className="mb-3 text-center text-2xl font-semibold text-leaf-900">
           {t("kobel.heading")}
         </h2>
-        <p className="max-w-md text-hazel-700">{t("kobel.empty")}</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {Array.from({ length: slotCount }, (_, index) => (
+            <ShelfSlotCard key={index} slotIndex={index} />
+          ))}
+        </div>
       </section>
     </main>
   );

@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import { plantSpeciesSchema } from "../engine/schemas";
+import { allSpecies, speciesById } from "./plants";
+
+// Auto-discover every plant file so a forgotten registry entry or an
+// invalid new file fails this contract test, not the running game.
+const modules = import.meta.glob(["./plants/*.ts", "!./plants/index.ts"], {
+  eager: true,
+}) as Record<string, Record<string, unknown>>;
+
+const fileExports = Object.entries(modules).flatMap(([path, mod]) =>
+  Object.entries(mod).map(([exportName, value]) => ({
+    source: `${path}#${exportName}`,
+    value,
+  })),
+);
+
+describe("content contract: plants", () => {
+  it("discovers the M2 species files", () => {
+    expect(fileExports.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("every export of every plant file validates against the schema", () => {
+    for (const entry of fileExports) {
+      const parsed = plantSpeciesSchema.safeParse(entry.value);
+      expect(
+        parsed.success,
+        `${entry.source}: ${parsed.success ? "ok" : parsed.error.message}`,
+      ).toBe(true);
+    }
+  });
+
+  it("every plant file is registered in the index", () => {
+    for (const entry of fileExports) {
+      const parsed = plantSpeciesSchema.parse(entry.value);
+      expect(speciesById[parsed.id], `${entry.source} fehlt im Index`).toBe(
+        entry.value,
+      );
+    }
+  });
+
+  it("registry and files are in sync (no orphan registry entries)", () => {
+    expect(allSpecies.length).toBe(fileExports.length);
+  });
+
+  it("species ids are unique", () => {
+    const ids = allSpecies.map((species) => species.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
