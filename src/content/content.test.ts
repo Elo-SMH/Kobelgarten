@@ -2,14 +2,18 @@ import { describe, expect, it } from "vitest";
 import {
   plantSpeciesSchema,
   shopItemSchema,
+  squirrelSchema,
   talentSchema,
   talentTreeSchema,
+  tutorialStepSchema,
 } from "../engine/schemas";
 import de from "../i18n/de.json";
 import { CONFIG } from "./config";
 import { allShopItems, dailyOfferPool, shopItemById } from "./items";
 import { allSpecies, speciesById } from "./plants";
 import { allTalents, talentById } from "./skills";
+import { allSquirrels, squirrelById } from "./squirrels";
+import { tutorialSteps } from "./tutorial";
 
 // Auto-discover every plant file so a forgotten registry entry or an
 // invalid new file fails this contract test, not the running game.
@@ -135,5 +139,60 @@ describe("content contract: talents (PLAN 2.4)", () => {
         `talent.${talent.id}.desc fehlt in de.json`,
       ).toBeDefined();
     }
+  });
+});
+
+describe("content contract: squirrels (PLAN 2.6)", () => {
+  const messages = de as Record<string, string>;
+
+  it("offers exactly the three v1 characters, all schema-valid", () => {
+    expect(allSquirrels.length).toBe(3);
+    for (const squirrel of allSquirrels) {
+      const parsed = squirrelSchema.safeParse(squirrel);
+      expect(
+        parsed.success,
+        `${squirrel.id}: ${parsed.success ? "ok" : parsed.error.message}`,
+      ).toBe(true);
+    }
+  });
+
+  it("squirrel ids are unique, registered, and described in de.json", () => {
+    const ids = allSquirrels.map((squirrel) => squirrel.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const squirrel of allSquirrels) {
+      expect(squirrelById[squirrel.id]).toBe(squirrel);
+      expect(
+        messages[`squirrel.${squirrel.id}.bonus`],
+        `squirrel.${squirrel.id}.bonus fehlt in de.json`,
+      ).toBeDefined();
+      expect(
+        messages[`squirrel.${squirrel.id}.flavor`],
+        `squirrel.${squirrel.id}.flavor fehlt in de.json`,
+      ).toBeDefined();
+    }
+  });
+});
+
+describe("content contract: tutorial (PLAN 2.7)", () => {
+  const messages = de as Record<string, string>;
+
+  it("every tutorial step validates and has title + body in de.json", () => {
+    expect(tutorialSteps.length).toBeGreaterThan(0);
+    for (const step of tutorialSteps) {
+      expect(tutorialStepSchema.safeParse(step).success).toBe(true);
+      expect(
+        messages[`tutorial.${step.id}.title`],
+        `tutorial.${step.id}.title fehlt`,
+      ).toBeDefined();
+      expect(
+        messages[`tutorial.${step.id}.body`],
+        `tutorial.${step.id}.body fehlt`,
+      ).toBeDefined();
+    }
+  });
+
+  it("starts and ends with a narration step the player clicks through", () => {
+    expect(tutorialSteps[0].trigger).toBe("next");
+    expect(tutorialSteps[tutorialSteps.length - 1].trigger).toBe("next");
   });
 });

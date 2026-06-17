@@ -8,6 +8,7 @@ import { phaseOf, type GrowthPhase } from "../../engine/growth";
 import { computeModifiers } from "../../engine/skills";
 import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
+import { playSound } from "../sound";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { PlantSVG } from "./PlantSVG";
 
@@ -91,6 +92,7 @@ export function ShopSellTab() {
                   if (value >= CONFIG.shop.sellConfirmThreshold) {
                     setPending({ plantId: plant.id, name: species.name, value });
                   } else {
+                    playSound("sell");
                     sellPlant(plant.id);
                   }
                 }}
@@ -113,6 +115,7 @@ export function ShopSellTab() {
           confirmLabel={t("shop.confirmYes")}
           cancelLabel={t("shop.confirmNo")}
           onConfirm={() => {
+            playSound("sell");
             sellPlant(pending.plantId);
             setPending(null);
           }}

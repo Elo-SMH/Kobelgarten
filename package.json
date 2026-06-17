@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "sim": "vite-node scripts/simulate.ts",
     "lint": "eslint . && tsc --noEmit"
   },
   "dependencies": {

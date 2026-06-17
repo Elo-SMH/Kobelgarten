@@ -5,6 +5,7 @@ import { computeModifiers } from "../../engine/skills";
 import { t, type MessageKey } from "../../i18n";
 import { itemPrice } from "../../state/shop";
 import { useGameStore } from "../../state/store";
+import { playSound } from "../sound";
 
 const DESC_KEYS: Record<string, MessageKey> = {
   "pot-small": "item.pot-small.desc",
@@ -68,7 +69,10 @@ export function ShopItemRow({ item, offer }: ShopItemRowProps) {
         </span>
       ) : (
         <button
-          onClick={() => buyItem(item.id)}
+          onClick={() => {
+            playSound("buy");
+            buyItem(item.id);
+          }}
           disabled={hazelnuts < price}
           className="rounded-full bg-leaf-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-leaf-700 disabled:cursor-not-allowed disabled:bg-cream-200 disabled:text-hazel-300"
         >

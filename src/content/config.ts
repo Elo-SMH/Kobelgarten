@@ -29,7 +29,9 @@ export const CONFIG = {
     // Würfeltabelle PLAN 2.2; Basischancen gelten bei mutability 0.02
     variegation: {
       baselineMutability: 0.02,
-      spontaneousChance: 0.02,
+      // Balance-Pass M6: 0.02 → 0.03, damit die erste Variegation im Median
+      // in die Zielspanne 1–3 Spielstunden rückt (scripts/simulate.ts).
+      spontaneousChance: 0.03,
       spontaneousCoverage: [0.05, 0.15],
       freshStability: [0.3, 0.8],
       intensifyChance: 0.1,
@@ -102,14 +104,16 @@ export const CONFIG = {
   },
 
   economy: {
-    // Adult ≈ 2× Samenpreis, damit der Kreislauf Kaufen→Ziehen→Verkaufen
-    // profitabel ist (Samenpreis = species.basePrice)
+    // Adult deutlich über Samenpreis, damit der Kreislauf Kaufen→Ziehen→
+    // Verkaufen früh Kapital aufbaut (Samenpreis = species.basePrice).
+    // Balance-Pass M6: adult 2 → 2.5, pracht 3 → 4 — fettet die dünne
+    // Früh-Marge, ohne ein Einkommens-Runaway auszulösen (scripts/simulate.ts).
     phaseValueFactors: {
       seed: 0.15,
       seedling: 0.5,
       juvenile: 1.2,
-      adult: 2,
-      pracht: 3,
+      adult: 2.5,
+      pracht: 4,
     },
     variegationMultipliers: {
       none: 0,
@@ -123,8 +127,12 @@ export const CONFIG = {
   } satisfies EconomyConfig,
 
   shop: {
-    /** Kaufpreise; Samen kosten species.basePrice (PLAN 2.5). */
-    potPrices: { small: 5, medium: 20, large: 80 } satisfies Record<
+    /**
+     * Kaufpreise; Samen kosten species.basePrice (PLAN 2.5). Balance-Pass M6:
+     * medium 20 → 12, large 80 → 60 — der mittlere Topf war so teuer, dass mit
+     * dem 50-🌰-Start nur eine Pflanze gleichzeitig lief (scripts/simulate.ts).
+     */
+    potPrices: { small: 5, medium: 12, large: 60 } satisfies Record<
       PotSize,
       number
     >,

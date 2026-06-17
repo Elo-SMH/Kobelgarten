@@ -4,6 +4,7 @@ import { speciesById } from "../../content/plants";
 import type { PotSize } from "../../engine/schemas";
 import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
+import { playSound } from "../sound";
 import { PlantCard } from "./PlantCard";
 
 const POT_SIZES: PotSize[] = ["small", "medium", "large"];
@@ -50,6 +51,7 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
 
   const plantWithPot = (size: PotSize) => {
     if (!choice) return;
+    playSound("plant");
     if (choice.kind === "shop") plantSeed(slotIndex, choice.speciesId, size);
     else plantPropagule(slotIndex, choice.propaguleId, size);
     setChoice(null);

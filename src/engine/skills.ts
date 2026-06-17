@@ -1,4 +1,11 @@
-import type { AddStat, EnableStat, MultiplyStat, Talent, TalentTree } from "./schemas";
+import type {
+  AddStat,
+  EnableStat,
+  MultiplyStat,
+  Squirrel,
+  Talent,
+  TalentTree,
+} from "./schemas";
 
 /**
  * Talentbaum-Effekte als Modifikator-Pipeline (PLAN 2.4): Talente sind
@@ -77,6 +84,20 @@ export function computeModifiers(
   result.shopDiscount = Math.min(result.shopDiscount, DISCOUNT_CAP);
   result.shelfSlotDiscount = Math.min(result.shelfSlotDiscount, DISCOUNT_CAP);
   return result;
+}
+
+/**
+ * Wendet den Mini-Startbonus des gewählten Eichhörnchens (PLAN 2.6) auf die
+ * bereits aggregierten Talent-Modifikatoren an: ein Multiplikator auf genau
+ * einen Stat. Ohne Eichhörnchen bleiben die Modifikatoren unverändert.
+ */
+export function withSquirrelBonus(
+  mods: Modifiers,
+  squirrel: Squirrel | null | undefined,
+): Modifiers {
+  if (!squirrel) return mods;
+  const { stat, value } = squirrel.bonus;
+  return { ...mods, [stat]: mods[stat] * value };
 }
 
 /** Summe aller investierten Punkte (= verbrauchte Skillpunkte). */

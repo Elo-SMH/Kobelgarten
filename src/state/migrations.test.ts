@@ -49,7 +49,38 @@ describe("migrateSave", () => {
       eventCounter: 0,
       lexicon: {},
       lexiconRewardsClaimed: 0,
+      squirrelId: "hasel",
+      tutorialStep: 8,
+      tutorialDone: true,
     });
+  });
+
+  it("v5 → v6 gives existing players a default squirrel and a finished tutorial", () => {
+    const v5 = {
+      tick: 10,
+      lastTickAt: 1_000_000,
+      hazelnuts: 200,
+      plants: {},
+      shelf: [],
+      plantCounter: 0,
+      inventory: {},
+      wateringCanLevel: 1,
+      propagules: {},
+      propaguleCounter: 0,
+      xp: 130,
+      talentRanks: { feilschen: 1 },
+      activeEvents: [],
+      eventCounter: 0,
+      lexicon: {},
+      lexiconRewardsClaimed: 0,
+    };
+    const migrated = migrateSave(v5, 5);
+    expect(migrated.squirrelId).toBe("hasel");
+    expect(migrated.tutorialDone).toBe(true);
+    expect(migrated.tutorialStep).toBeGreaterThan(0);
+    // Bestehende Felder bleiben unangetastet.
+    expect(migrated.xp).toBe(130);
+    expect(migrated.talentRanks).toEqual({ feilschen: 1 });
   });
 
   it("v3 → v4 adds the empty breeding inventory", () => {

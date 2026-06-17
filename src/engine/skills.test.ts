@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Talent } from "./schemas";
+import type { Squirrel, Talent } from "./schemas";
 import {
   computeModifiers,
   DEFAULT_MODIFIERS,
@@ -10,6 +10,7 @@ import {
   pointsSpent,
   respecCost,
   totalSkillPoints,
+  withSquirrelBonus,
   xpForLevelUp,
   type ProgressionConfig,
   type XpCurve,
@@ -53,6 +54,31 @@ const talents: Talent[] = [
     effect: { kind: "add", stat: "shopDiscount", value: 0.2 },
   },
 ];
+
+describe("withSquirrelBonus — Eichhörnchen-Startbonus (PLAN 2.6)", () => {
+  const hasel: Squirrel = {
+    id: "hasel",
+    name: "Hasel",
+    emoji: "🐿️",
+    color: "#c1440e",
+    bonus: { stat: "sellPriceFactor", value: 1.05 },
+  };
+
+  it("multipliziert genau den Bonus-Stat auf den Talent-Modifikatoren", () => {
+    const base = { ...DEFAULT_MODIFIERS, sellPriceFactor: 1.2 };
+    const mods = withSquirrelBonus(base, hasel);
+    expect(mods.sellPriceFactor).toBeCloseTo(1.2 * 1.05);
+    // alle anderen Stats bleiben unangetastet
+    expect(mods.growthFactor).toBe(1);
+  });
+
+  it("ohne Eichhörnchen bleiben die Modifikatoren unverändert (edge case)", () => {
+    expect(withSquirrelBonus(DEFAULT_MODIFIERS, null)).toEqual(DEFAULT_MODIFIERS);
+    expect(withSquirrelBonus(DEFAULT_MODIFIERS, undefined)).toEqual(
+      DEFAULT_MODIFIERS,
+    );
+  });
+});
 
 describe("computeModifiers — Modifikator-Pipeline (PLAN 2.4)", () => {
   it("ohne Ränge gelten die neutralen Defaults", () => {

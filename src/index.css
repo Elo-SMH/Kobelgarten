@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Reduzierte Animationen (Einstellung, PLAN 2.7): App.tsx setzt diese Klasse
+ * am <html>, wenn der Spieler Animationen reduzieren will. Transitions und
+ * Animationen werden dann praktisch sofort beendet — barrierearm.
+ */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

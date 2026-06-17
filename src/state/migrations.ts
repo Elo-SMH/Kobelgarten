@@ -1,4 +1,5 @@
 import { CONFIG } from "../content/config";
+import { tutorialSteps } from "../content/tutorial";
 import type { ActiveEvent } from "../engine/events";
 import type { PlantInstance } from "../engine/growth";
 import { comboKey } from "../engine/lexicon";
@@ -8,7 +9,7 @@ import type { Genome, LightPlacement } from "../engine/schemas";
  * Versioned saves. Any change to the save shape requires bumping
  * SAVE_VERSION and adding a migration step below — never break old saves.
  */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface SaveV1 {
   tick: number;
@@ -66,8 +67,17 @@ export interface SaveV5 extends SaveV4 {
   lexiconRewardsClaimed: number;
 }
 
+export interface SaveV6 extends SaveV5 {
+  /** Gewähltes Spieler-Eichhörnchen (PLAN 2.6); null = noch nicht gewählt. */
+  squirrelId: string | null;
+  /** Aktueller Tutorial-Schritt (Index in content/tutorial.ts). */
+  tutorialStep: number;
+  /** Tutorial durchgespielt oder übersprungen. */
+  tutorialDone: boolean;
+}
+
 /** The current save shape. */
-export type Save = SaveV5;
+export type Save = SaveV6;
 
 export function createDefaultShelf(): ShelfSlotState[] {
   return CONFIG.shelf.slots.map((placement) => ({ placement, plantId: null }));
@@ -136,6 +146,15 @@ const migrations: Record<number, Migration> = {
       lexiconRewardsClaimed: 0,
     };
   },
+  // v5 → v6: Eichhörnchen-Auswahl & Tutorial (M6). Bestandsspieler laufen
+  // schon — sie bekommen Hasel als Standard und ein abgeschlossenes Tutorial,
+  // damit sie nicht zurück in die Charakterwahl geworfen werden.
+  6: (state) => ({
+    ...state,
+    squirrelId: "hasel",
+    tutorialStep: tutorialSteps.length,
+    tutorialDone: true,
+  }),
 };
 
 export function migrateSave(persisted: unknown, fromVersion: number): Save {

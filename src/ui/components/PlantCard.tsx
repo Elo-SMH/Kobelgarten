@@ -3,6 +3,7 @@ import { speciesById } from "../../content/plants";
 import { phaseOf, type GrowthPhase } from "../../engine/growth";
 import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
+import { playSound } from "../sound";
 import { NeedBar } from "./NeedBar";
 import { PlantSVG } from "./PlantSVG";
 import { variegationLabel } from "./variegation";
@@ -89,7 +90,10 @@ export function PlantCard({ plantId }: PlantCardProps) {
       ) : (
         <div className="mt-1 flex gap-2">
           <button
-            onClick={() => waterPlant(plant.id)}
+            onClick={() => {
+              playSound("water");
+              waterPlant(plant.id);
+            }}
             disabled={plant.water > 0.98}
             className="flex-1 rounded-full bg-sky-500 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-cream-200 disabled:text-hazel-300"
           >

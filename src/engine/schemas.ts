@@ -129,6 +129,48 @@ export type Talent = z.infer<typeof talentSchema>;
 
 const hexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i, "expected #rrggbb");
 
+/**
+ * Spieler-Eichhörnchen (PLAN 2.6): rein kosmetisch plus ein Mini-Startbonus,
+ * der über einen Multiplikator-Stat der Skill-Pipeline wirkt — Daten, kein
+ * Sonderfall in der Engine.
+ */
+export const squirrelSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  /** Deutscher Anzeigename. */
+  name: z.string().min(1),
+  emoji: z.string().min(1),
+  /** Fell-Farbe für den Sprite. */
+  color: hexColorSchema,
+  /** Mini-Startbonus als Multiplikator auf einen Skill-Stat. */
+  bonus: z.object({ stat: multiplyStatSchema, value: z.number().positive() }),
+});
+export type Squirrel = z.infer<typeof squirrelSchema>;
+
+/**
+ * Geskriptetes Tutorial (PLAN 2.7): die Schritt-Reihenfolge ist Daten, jeder
+ * Schritt wartet auf einen Spiel-Trigger. Die Engine (engine/tutorial.ts)
+ * kennt nur die Trigger, nie einzelne Schritt-Texte.
+ */
+export const tutorialTriggerSchema = z.enum([
+  // wird per Klick auf „Weiter“ ausgelöst (reine Erzähl-Schritte)
+  "next",
+  "ready-to-plant",
+  "planted",
+  "watered",
+  "grew",
+  "sold",
+  "cut",
+]);
+export type TutorialTrigger = z.infer<typeof tutorialTriggerSchema>;
+
+export const tutorialStepSchema = z.object({
+  /** i18n-Key-Suffix: tutorial.<id>. */
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  /** Spiel-Ereignis, das diesen Schritt abschließt. */
+  trigger: tutorialTriggerSchema,
+});
+export type TutorialStep = z.infer<typeof tutorialStepSchema>;
+
 export const plantSpeciesSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   /** Deutscher Anzeigename. */
