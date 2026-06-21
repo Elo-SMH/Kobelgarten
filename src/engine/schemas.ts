@@ -130,10 +130,30 @@ export type Talent = z.infer<typeof talentSchema>;
 const hexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i, "expected #rrggbb");
 
 /**
- * Spieler-Eichhörnchen (PLAN 2.6): rein kosmetisch plus ein Mini-Startbonus,
- * der über einen Multiplikator-Stat der Skill-Pipeline wirkt — Daten, kein
- * Sonderfall in der Engine.
+ * Mini-Startbonus eines Eichhörnchens (PLAN 2.6) als Daten, kein Sonderfall in
+ * der Engine. Drei Ausprägungen:
+ * - modifier: passiver Multiplikator auf einen Skill-Stat (Skill-Pipeline)
+ * - doubleSaleChance: Chance, beim Verkauf die doppelte Menge zu erhalten
+ * - freeCuttingChance: Chance, dass ein Steckling kein Wachstum kostet
  */
+export const squirrelBonusSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("modifier"),
+    stat: multiplyStatSchema,
+    value: z.number().positive(),
+  }),
+  z.object({
+    kind: z.literal("doubleSaleChance"),
+    chance: z.number().min(0).max(1),
+  }),
+  z.object({
+    kind: z.literal("freeCuttingChance"),
+    chance: z.number().min(0).max(1),
+  }),
+]);
+export type SquirrelBonus = z.infer<typeof squirrelBonusSchema>;
+
+/** Spieler-Eichhörnchen (PLAN 2.6): rein kosmetisch plus ein Mini-Startbonus. */
 export const squirrelSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   /** Deutscher Anzeigename. */
@@ -141,8 +161,7 @@ export const squirrelSchema = z.object({
   emoji: z.string().min(1),
   /** Fell-Farbe für den Sprite. */
   color: hexColorSchema,
-  /** Mini-Startbonus als Multiplikator auf einen Skill-Stat. */
-  bonus: z.object({ stat: multiplyStatSchema, value: z.number().positive() }),
+  bonus: squirrelBonusSchema,
 });
 export type Squirrel = z.infer<typeof squirrelSchema>;
 

@@ -37,6 +37,8 @@ import {
   pointsInTree,
   pointsSpent,
   respecCost,
+  rollDoubleSale,
+  rollFreeCutting,
   totalSkillPoints,
   withSquirrelBonus,
   type Modifiers,
@@ -456,6 +458,7 @@ export const useGameStore = create<GameStore>()(
 
       sellPlant: (plantId) => {
         const {
+          tick,
           plants,
           shelf,
           hazelnuts,
@@ -475,10 +478,15 @@ export const useGameStore = create<GameStore>()(
           activeEvents,
           plant.genome.variegation.type,
         );
+        // Hasels Bonus: Chance auf doppelten Verkaufserlös (deterministischer
+        // Wurf pro Pflanze & Tick, da eine Pflanze nur einmal verkauft wird).
+        const squirrel = squirrelId ? squirrelById[squirrelId] : undefined;
+        const saleRng = createRng(hashSeed(`sale:${plantId}:${tick}`));
+        const doubled = rollDoubleSale(squirrel, saleRng);
         const price = effectiveSellPrice(
           value,
           mods.sellPriceFactor,
-          quest?.priceFactor ?? 1,
+          (quest?.priceFactor ?? 1) * (doubled ? 2 : 1),
         );
         let xpGain = Math.ceil(price / CONFIG.progression.xp.saleDivisor);
         if (quest) xpGain += CONFIG.progression.xp.collectorBonus;
@@ -533,8 +541,13 @@ export const useGameStore = create<GameStore>()(
           chanceMultiplier: mods.mutationChanceFactor,
           stabilityBonus: mods.stabilityBonus,
         });
-        // Jeder Schnitt kostet die Mutterpflanze Wachstum (art-spezifisch).
-        const cost = species.cuttingCost ?? CONFIG.cutting.defaultCost;
+        // Fips' Bonus: Chance, dass dieser Schnitt gratis ist (eigener RNG,
+        // damit das Mutations-Ergebnis oben unverändert bleibt).
+        const squirrel = squirrelId ? squirrelById[squirrelId] : undefined;
+        const freeRng = createRng(hashSeed(`freecut:${plantId}:${nextCounter}`));
+        const cost = rollFreeCutting(squirrel, freeRng)
+          ? 0
+          : (species.cuttingCost ?? CONFIG.cutting.defaultCost);
         const cutParent = {
           ...plant,
           progress: Math.max(0, plant.progress - cost),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Rng } from "./rng";
 import type { Squirrel, Talent } from "./schemas";
 import {
   computeModifiers,
@@ -9,12 +10,24 @@ import {
   pointsInTree,
   pointsSpent,
   respecCost,
+  rollDoubleSale,
+  rollFreeCutting,
   totalSkillPoints,
   withSquirrelBonus,
   xpForLevelUp,
   type ProgressionConfig,
   type XpCurve,
 } from "./skills";
+
+/** Minimaler RNG-Stub: chance() liefert ein festes Ergebnis. */
+function stubRng(chanceResult: boolean): Rng {
+  return {
+    next: () => 0,
+    int: () => 0,
+    chance: () => chanceResult,
+    pick: (items) => items[0],
+  };
+}
 
 const talents: Talent[] = [
   {
@@ -55,28 +68,64 @@ const talents: Talent[] = [
   },
 ];
 
-describe("withSquirrelBonus — Eichhörnchen-Startbonus (PLAN 2.6)", () => {
-  const hasel: Squirrel = {
-    id: "hasel",
-    name: "Hasel",
-    emoji: "🐿️",
-    color: "#c1440e",
-    bonus: { stat: "sellPriceFactor", value: 1.05 },
-  };
+const nuka: Squirrel = {
+  id: "nuka",
+  name: "Nuka",
+  emoji: "🐿️",
+  color: "#3a3a3a",
+  bonus: { kind: "modifier", stat: "mutationChanceFactor", value: 1.1 },
+};
+const hasel: Squirrel = {
+  id: "hasel",
+  name: "Hasel",
+  emoji: "🐿️",
+  color: "#c1440e",
+  bonus: { kind: "doubleSaleChance", chance: 0.1 },
+};
+const fips: Squirrel = {
+  id: "fips",
+  name: "Fips",
+  emoji: "🐿️",
+  color: "#9a9a9a",
+  bonus: { kind: "freeCuttingChance", chance: 0.1 },
+};
 
+describe("withSquirrelBonus — passiver Modifier-Bonus (PLAN 2.6)", () => {
   it("multipliziert genau den Bonus-Stat auf den Talent-Modifikatoren", () => {
-    const base = { ...DEFAULT_MODIFIERS, sellPriceFactor: 1.2 };
-    const mods = withSquirrelBonus(base, hasel);
-    expect(mods.sellPriceFactor).toBeCloseTo(1.2 * 1.05);
+    const base = { ...DEFAULT_MODIFIERS, mutationChanceFactor: 1.2 };
+    const mods = withSquirrelBonus(base, nuka);
+    expect(mods.mutationChanceFactor).toBeCloseTo(1.2 * 1.1);
     // alle anderen Stats bleiben unangetastet
     expect(mods.growthFactor).toBe(1);
   });
 
-  it("ohne Eichhörnchen bleiben die Modifikatoren unverändert (edge case)", () => {
+  it("Chance-Boni (Hasel/Fips) und kein Eichhörnchen lassen die Mods unberührt", () => {
+    expect(withSquirrelBonus(DEFAULT_MODIFIERS, hasel)).toEqual(DEFAULT_MODIFIERS);
+    expect(withSquirrelBonus(DEFAULT_MODIFIERS, fips)).toEqual(DEFAULT_MODIFIERS);
     expect(withSquirrelBonus(DEFAULT_MODIFIERS, null)).toEqual(DEFAULT_MODIFIERS);
     expect(withSquirrelBonus(DEFAULT_MODIFIERS, undefined)).toEqual(
       DEFAULT_MODIFIERS,
     );
+  });
+});
+
+describe("rollDoubleSale / rollFreeCutting — Chance-Boni (PLAN 2.6)", () => {
+  const hit = stubRng(true);
+  const miss = stubRng(false);
+
+  it("rollDoubleSale: nur bei Hasels Bonus und erfolgreichem Wurf", () => {
+    expect(rollDoubleSale(hasel, hit)).toBe(true);
+    expect(rollDoubleSale(hasel, miss)).toBe(false);
+    expect(rollDoubleSale(fips, hit)).toBe(false); // falscher Bonus-Typ
+    expect(rollDoubleSale(nuka, hit)).toBe(false);
+    expect(rollDoubleSale(null, hit)).toBe(false); // kein Eichhörnchen
+  });
+
+  it("rollFreeCutting: nur bei Fips' Bonus und erfolgreichem Wurf", () => {
+    expect(rollFreeCutting(fips, hit)).toBe(true);
+    expect(rollFreeCutting(fips, miss)).toBe(false);
+    expect(rollFreeCutting(hasel, hit)).toBe(false);
+    expect(rollFreeCutting(null, hit)).toBe(false);
   });
 });
 

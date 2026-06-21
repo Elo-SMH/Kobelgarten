@@ -6,8 +6,8 @@ import { squirrelSchema, type Squirrel } from "../engine/schemas";
  * Eichhörnchen = ein Eintrag hier + Beschreibung in de.json, null
  * Engine-Änderungen.
  *
- * - Hasel (rot):  +5 % Verkaufspreis
- * - Fips (grau):  +5 % Wachstum
+ * - Hasel (rot):  10 % Chance auf doppelten Verkaufserlös
+ * - Fips (grau):  10 % Chance, dass ein Steckling kein Wachstum kostet
  * - Nuka (schwarz): +10 % Variegations-Chancen (das „grüne Pfötchen“ des
  *   Züchters; PLAN nennt es Mini-Mutationsbonus)
  */
@@ -17,21 +17,21 @@ const rawSquirrels: Squirrel[] = [
     name: "Hasel",
     emoji: "🐿️",
     color: "#c1440e",
-    bonus: { stat: "sellPriceFactor", value: 1.05 },
+    bonus: { kind: "doubleSaleChance", chance: 0.1 },
   },
   {
     id: "fips",
     name: "Fips",
     emoji: "🐿️",
     color: "#9a9a9a",
-    bonus: { stat: "growthFactor", value: 1.05 },
+    bonus: { kind: "freeCuttingChance", chance: 0.1 },
   },
   {
     id: "nuka",
     name: "Nuka",
     emoji: "🐿️",
     color: "#3a3a3a",
-    bonus: { stat: "mutationChanceFactor", value: 1.1 },
+    bonus: { kind: "modifier", stat: "mutationChanceFactor", value: 1.1 },
   },
 ];
 

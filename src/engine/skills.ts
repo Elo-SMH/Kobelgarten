@@ -1,3 +1,4 @@
+import type { Rng } from "./rng";
 import type {
   AddStat,
   EnableStat,
@@ -87,17 +88,49 @@ export function computeModifiers(
 }
 
 /**
- * Wendet den Mini-Startbonus des gewählten Eichhörnchens (PLAN 2.6) auf die
- * bereits aggregierten Talent-Modifikatoren an: ein Multiplikator auf genau
- * einen Stat. Ohne Eichhörnchen bleiben die Modifikatoren unverändert.
+ * Wendet den passiven Eichhörnchen-Bonus (PLAN 2.6) auf die aggregierten
+ * Talent-Modifikatoren an — aber nur den „modifier“-Typ (ein Multiplikator auf
+ * einen Stat). Chance-basierte Boni (doppelter Verkauf, Gratis-Steckling)
+ * greifen an ihrer jeweiligen Aktion, nicht in der Modifikator-Pipeline.
  */
 export function withSquirrelBonus(
   mods: Modifiers,
   squirrel: Squirrel | null | undefined,
 ): Modifiers {
-  if (!squirrel) return mods;
+  if (!squirrel || squirrel.bonus.kind !== "modifier") return mods;
   const { stat, value } = squirrel.bonus;
   return { ...mods, [stat]: mods[stat] * value };
+}
+
+/**
+ * Würfelt Hasels Bonus: Chance, beim Verkauf die doppelte Menge Haselnüsse zu
+ * erhalten. Nur wahr, wenn das Eichhörnchen diesen Bonus trägt und der Wurf
+ * trifft. Der RNG wird (deterministisch) vom Aufrufer übergeben.
+ */
+export function rollDoubleSale(
+  squirrel: Squirrel | null | undefined,
+  rng: Rng,
+): boolean {
+  return (
+    !!squirrel &&
+    squirrel.bonus.kind === "doubleSaleChance" &&
+    rng.chance(squirrel.bonus.chance)
+  );
+}
+
+/**
+ * Würfelt Fips' Bonus: Chance, dass ein Steckling kein Wachstum der
+ * Mutterpflanze kostet.
+ */
+export function rollFreeCutting(
+  squirrel: Squirrel | null | undefined,
+  rng: Rng,
+): boolean {
+  return (
+    !!squirrel &&
+    squirrel.bonus.kind === "freeCuttingChance" &&
+    rng.chance(squirrel.bonus.chance)
+  );
 }
 
 /** Summe aller investierten Punkte (= verbrauchte Skillpunkte). */
