@@ -28,6 +28,14 @@ export interface PlantInstance {
 export interface GrowthConfig {
   /** progress-Wert des Prachtexemplars (Adult = 1). */
   prachtProgress: number;
+  /**
+   * Globaler Tempo-Faktor fürs Wachstum: skaliert jeden Wachstums-Tick (1 =
+   * Rohwert aus species.growthTicks). Zentrale Stellschraube für das
+   * Spieltempo, ohne die Pro-Art-Verhältnisse anzufassen.
+   */
+  growthSpeed: number;
+  /** Globaler Faktor auf species.waterDrainPerTick (1 = unverändert). */
+  waterDrainMultiplier: number;
   /** Untere progress-Schwellen der Phasen (seed beginnt bei 0). */
   phaseThresholds: { seedling: number; juvenile: number; adult: number };
   /** Unter diesem Wasserstand wächst die Pflanze nur gebremst. */
@@ -114,7 +122,10 @@ export function tickPlant(
   // Auto-Gießen (Talent): das Eichhörnchen füllt nach, bevor es kritisch wird.
   const tank =
     mods.autoWater && plant.water <= config.autoWaterThreshold ? 1 : plant.water;
-  const water = Math.max(0, tank - species.waterDrainPerTick);
+  const water = Math.max(
+    0,
+    tank - species.waterDrainPerTick * config.waterDrainMultiplier,
+  );
   // Der Buff läuft mit der Zeit ab, auch wenn die Pflanze gerade nicht wächst.
   const fertilizerTicks = Math.max(0, plant.fertilizerTicks - 1);
   let wilt = plant.wilt;
@@ -144,7 +155,8 @@ export function tickPlant(
             waterFactor *
             lightFactor *
             fertilizerFactor *
-            mods.growthFactor) /
+            mods.growthFactor *
+            config.growthSpeed) /
             species.growthTicks,
       ),
     );

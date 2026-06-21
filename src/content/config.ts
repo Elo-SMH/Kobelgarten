@@ -29,9 +29,10 @@ export const CONFIG = {
     // Würfeltabelle PLAN 2.2; Basischancen gelten bei mutability 0.02
     variegation: {
       baselineMutability: 0.02,
-      // Balance-Pass M6: 0.02 → 0.03, damit die erste Variegation im Median
-      // in die Zielspanne 1–3 Spielstunden rückt (scripts/simulate.ts).
-      spontaneousChance: 0.03,
+      // PLAN 2.2: 2 % Basischance. Die erste Variegation fällt jetzt schon in
+      // die erste Spielstunde, weil growthSpeed Stecklinge ~8× früher reif
+      // macht (scripts/simulate.ts) — kein künstlicher Chance-Bump nötig.
+      spontaneousChance: 0.02,
       spontaneousCoverage: [0.05, 0.15],
       freshStability: [0.3, 0.8],
       intensifyChance: 0.1,
@@ -43,11 +44,24 @@ export const CONFIG = {
 
   growth: {
     prachtProgress: 1.5,
+    // M6-Pacing: globaler Wachstums-Tempo-Faktor, damit eine aktive Session
+    // nicht stundenlang im Leerlauf hängt. Mit 8 sprießt eine Efeutute in
+    // ~4 min, ist ab ~22 min kreuzbar (Jungpflanze) und nach ~75 min adult.
+    // Reskaliert ALLE Pro-Art-growthTicks — die „~Xh“-Kommentare in
+    // content/plants/* sind Rohwerte vor diesem Faktor.
+    growthSpeed: 8,
+    // M6-Pacing: schnellerer Wasserverbrauch macht Gießen zur regelmäßigen
+    // Aufgabe (statt einmal alle ~11h). Pflegeintensive Arten (Calathea,
+    // Alocasia) wollen jetzt spürbar öfter Wasser.
+    waterDrainMultiplier: 12,
     phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
     lowWaterThreshold: 0.2,
     lowWaterGrowthFactor: 0.5,
-    // trocken: Tod nach ~500 Ticks (≈ 8h) bei hardiness 1
-    wiltPerTick: 0.002,
+    // trocken: Tod nach ~1000 Ticks (≈ 16h) bei hardiness 1. Bewusst träge,
+    // damit der schnellere Wasserverbrauch (s.o.) einen Offline-Tag nicht
+    // direkt tödlich macht — Gießen optimiert das Wachstum, Vernachlässigung
+    // bremst und tötet erst nach Stunden.
+    wiltPerTick: 0.001,
     wiltRecoveryPerTick: 0.004,
     lightFactors: {
       low: { window: 0.9, shade: 1 },

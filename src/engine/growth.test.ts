@@ -14,6 +14,8 @@ import type { Genome, PlantSpecies, PotSize } from "./schemas";
 
 const config: GrowthConfig = {
   prachtProgress: 1.5,
+  growthSpeed: 1,
+  waterDrainMultiplier: 1,
   phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
   lowWaterThreshold: 0.2,
   lowWaterGrowthFactor: 0.5,
@@ -93,6 +95,23 @@ describe("tickPlant", () => {
     const plant = createPlant("p1", makeGenome(), "large");
     const after = tickPlantMany(plant, species, "window", 10, config);
     expect(after.water).toBeCloseTo(1 - 10 * species.waterDrainPerTick, 10);
+  });
+
+  it("waterDrainMultiplier scales how fast the tank empties", () => {
+    const plant = createPlant("p1", makeGenome(), "large");
+    const thirsty = { ...config, waterDrainMultiplier: 3 };
+    const after = tickPlantMany(plant, species, "window", 10, thirsty);
+    expect(after.water).toBeCloseTo(1 - 10 * species.waterDrainPerTick * 3, 10);
+  });
+
+  it("growthSpeed scales growth per tick (edge: 0 freezes growth)", () => {
+    const plant = createPlant("p1", makeGenome(), "large");
+    const slow = tickPlant(plant, species, "window", config);
+    const fast = tickPlant(plant, species, "window", { ...config, growthSpeed: 2 });
+    expect(slow.progress).toBeGreaterThan(0);
+    expect(fast.progress).toBeCloseTo(slow.progress * 2, 10);
+    const frozen = tickPlant(plant, species, "window", { ...config, growthSpeed: 0 });
+    expect(frozen.progress).toBe(0);
   });
 
   it("grows from seed to adult under good care", () => {

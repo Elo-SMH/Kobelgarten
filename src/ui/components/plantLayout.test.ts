@@ -5,6 +5,8 @@ import { plantLayout } from "./plantLayout";
 
 const config: GrowthConfig = {
   prachtProgress: 1.5,
+  growthSpeed: 1,
+  waterDrainMultiplier: 1,
   phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
   lowWaterThreshold: 0.2,
   lowWaterGrowthFactor: 0.5,
