@@ -118,6 +118,16 @@ interface GameStore extends Save {
   switchToSlot: (slot: number) => void;
   /** Importiert einen Spielstand aus JSON-Text; gibt eine Fehlermeldung zurück. */
   importSave: (json: string) => { ok: boolean; error?: string };
+  /**
+   * Transienter Glücks-Hinweis für die UI (NICHT persistiert): wird gesetzt,
+   * wenn ein Eichhörnchen-Chance-Bonus trifft. `id` steigt pro Treffer, damit
+   * die UI auch bei gleicher Art neu animiert.
+   */
+  bonusToast: { kind: "doubleSale" | "freeCutting"; id: number } | null;
+  /** Zeigt einen Glücks-Hinweis an (Toast). */
+  flashBonus: (kind: "doubleSale" | "freeCutting") => void;
+  /** Blendet den Glücks-Hinweis aus (nur, wenn die id noch aktuell ist). */
+  clearBonusToast: (id: number) => void;
 }
 
 /** Inventar-Update; Einträge mit Bestand 0 werden entfernt. */
@@ -239,6 +249,7 @@ export const useGameStore = create<GameStore>()(
   persist<GameStore, [], [], Save>(
     (set, get) => ({
       ...freshSave(Date.now()),
+      bonusToast: null,
 
       catchUp: (now) => {
         const { tick, lastTickAt, plants, shelf, talentRanks, squirrelId } =
@@ -504,6 +515,7 @@ export const useGameStore = create<GameStore>()(
           inventory: withCount(inventory, potItemId(plant.potSize), 1),
           activeEvents: events,
         });
+        if (doubled) get().flashBonus("doubleSale");
         get().advanceTutorial("sold");
       },
 
@@ -545,7 +557,8 @@ export const useGameStore = create<GameStore>()(
         // damit das Mutations-Ergebnis oben unverändert bleibt).
         const squirrel = squirrelId ? squirrelById[squirrelId] : undefined;
         const freeRng = createRng(hashSeed(`freecut:${plantId}:${nextCounter}`));
-        const cost = rollFreeCutting(squirrel, freeRng)
+        const free = rollFreeCutting(squirrel, freeRng);
+        const cost = free
           ? 0
           : (species.cuttingCost ?? CONFIG.cutting.defaultCost);
         const cutParent = {
@@ -558,6 +571,7 @@ export const useGameStore = create<GameStore>()(
           propaguleCounter: nextCounter,
           ...withDiscoveries(state, [genome]),
         });
+        if (free) get().flashBonus("freeCutting");
         get().advanceTutorial("cut");
       },
 
@@ -740,6 +754,15 @@ export const useGameStore = create<GameStore>()(
         if (!save.success) return { ok: false, error: "invalid-save" };
         get().loadSave(save.data);
         return { ok: true };
+      },
+
+      flashBonus: (kind) =>
+        set((state) => ({
+          bonusToast: { kind, id: (state.bonusToast?.id ?? 0) + 1 },
+        })),
+
+      clearBonusToast: (id) => {
+        if (get().bonusToast?.id === id) set({ bonusToast: null });
       },
     }),
     {

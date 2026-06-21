@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "./i18n";
 import { useSettingsStore } from "./state/settings";
 import { useGameStore } from "./state/store";
+import { BonusToast } from "./ui/components/BonusToast";
 import { TutorialOverlay } from "./ui/components/TutorialOverlay";
 import { BreedingScreen } from "./ui/screens/BreedingScreen";
 import { CharacterSelect } from "./ui/screens/CharacterSelect";
@@ -87,6 +88,7 @@ export function App() {
         <MenuScreen onClose={() => setScreen("kobel")} />
       )}
       <TutorialOverlay />
+      <BonusToast />
     </div>
   );
 }

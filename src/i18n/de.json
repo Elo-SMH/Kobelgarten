@@ -135,6 +135,8 @@
   "lexikon.rewardClaimed": "Erhalten",
   "zucht.geneReadout": "Wachstum {growth} · Größe {size} · Robustheit {hardiness} · Stabilität {stability}",
   "nav.menu": "Menü",
+  "bonus.doubleSale": "✨ Glückstreffer! Doppelte Haselnüsse!",
+  "bonus.freeCutting": "✨ Gratis-Steckling! Kein Wachstum verbraucht.",
   "character.heading": "Wer pflegt den Kobel?",
   "character.hint": "Wähle dein Eichhörnchen. Jedes bringt einen kleinen Startbonus mit. Das Aussehen ist Geschmackssache, der Bonus bleibt.",
   "character.choose": "Los geht's!",
