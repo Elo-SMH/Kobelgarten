@@ -6,7 +6,6 @@ import { EventBanner } from "../components/EventBanner";
 import { ShelfSlotCard } from "../components/ShelfSlotCard";
 
 export function KobelScreen() {
-  const tick = useGameStore((state) => state.tick);
   const hazelnuts = useGameStore((state) => state.hazelnuts);
   const xp = useGameStore((state) => state.xp);
   const slotCount = useGameStore((state) => state.shelf.length);
@@ -25,12 +24,6 @@ export function KobelScreen() {
       </header>
 
       <div className="mb-6 flex gap-4">
-        <div className="rounded-2xl border border-cream-300 bg-cream-50 px-5 py-3 shadow-sm">
-          <span className="block text-xs uppercase tracking-wide text-hazel-500">
-            {t("kobel.tickLabel")}
-          </span>
-          <span className="text-2xl font-semibold tabular-nums">⏱️ {tick}</span>
-        </div>
         <div className="rounded-2xl border border-cream-300 bg-cream-50 px-5 py-3 shadow-sm">
           <span className="block text-xs uppercase tracking-wide text-hazel-500">
             {t("kobel.hazelnutsLabel")}

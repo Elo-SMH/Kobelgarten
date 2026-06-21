@@ -17,6 +17,11 @@ export const CONFIG = {
   offlineCapTicks: 48 * 60,
   /** Startkapital in Haselnüssen. */
   startHazelnuts: 50,
+  /**
+   * Wasserstand frisch eingepflanzter Pflanzen (Samen wie Stecklinge): bei
+   * 50 % kann der Spieler sofort gießen, statt auf einen vollen Tank zu warten.
+   */
+  plantingWaterLevel: 0.5,
 
   genetics: {
     seedJitter: 0.1,

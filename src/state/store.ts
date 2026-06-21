@@ -400,7 +400,10 @@ export const useGameStore = create<GameStore>()(
         const rng = createRng(hashSeed(`${id}:${speciesId}`));
         const genome = createSeedGenome(species.id, rng, CONFIG.genetics);
         set({
-          plants: { ...plants, [id]: createPlant(id, genome, potSize) },
+          plants: {
+            ...plants,
+            [id]: createPlant(id, genome, potSize, 0, CONFIG.plantingWaterLevel),
+          },
           shelf: shelf.map((entry, index) =>
             index === slotIndex ? { ...entry, plantId: id } : entry,
           ),
@@ -603,7 +606,13 @@ export const useGameStore = create<GameStore>()(
         set({
           plants: {
             ...plants,
-            [id]: createPlant(id, propagule.genome, potSize, initialProgress),
+            [id]: createPlant(
+              id,
+              propagule.genome,
+              potSize,
+              initialProgress,
+              CONFIG.plantingWaterLevel,
+            ),
           },
           shelf: shelf.map((entry, index) =>
             index === slotIndex ? { ...entry, plantId: id } : entry,

@@ -84,12 +84,14 @@ export function createPlant(
   potSize: PotSize,
   /** Stecklinge starten mit Vorsprung (CONFIG.genetics.cuttingStartProgress). */
   initialProgress = 0,
+  /** Füllstand des Wassertanks beim Anlegen (1 = voll). */
+  initialWater = 1,
 ): PlantInstance {
   return {
     id,
     genome,
     progress: initialProgress,
-    water: 1,
+    water: initialWater,
     wilt: 0,
     dead: false,
     potSize,
