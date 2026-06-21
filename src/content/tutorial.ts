@@ -13,8 +13,10 @@ const rawSteps: TutorialStep[] = [
   { id: "plant", trigger: "planted" },
   { id: "water", trigger: "watered" },
   { id: "grow", trigger: "grew" },
-  { id: "sell", trigger: "sold" },
+  // Vermehren VOR Verkaufen: man schneidet den Steckling, solange die Pflanze
+  // noch da ist — sonst stünde man nach dem Verkauf ohne Pflanze da.
   { id: "cutting", trigger: "cut" },
+  { id: "sell", trigger: "sold" },
   { id: "done", trigger: "next" },
 ];
 
