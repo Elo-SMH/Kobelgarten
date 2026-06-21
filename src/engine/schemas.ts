@@ -154,7 +154,8 @@ export type Squirrel = z.infer<typeof squirrelSchema>;
 export const tutorialTriggerSchema = z.enum([
   // wird per Klick auf „Weiter“ ausgelöst (reine Erzähl-Schritte)
   "next",
-  "ready-to-plant",
+  "bought-seed",
+  "bought-pot",
   "planted",
   "watered",
   "grew",

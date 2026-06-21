@@ -350,7 +350,10 @@ export const useGameStore = create<GameStore>()(
           hazelnuts: hazelnuts - price,
           inventory: withCount(inventory, itemId, 1),
         });
-        // Tutorial-Beat „kaufen“: erst weiter, wenn Samen UND Topf da sind.
+        // Tutorial-Beats „Samen kaufen“ und „Topf kaufen“ als getrennte
+        // Schritte. Aus dem Inventar-Zustand (statt dem Kauf-Event) getriggert,
+        // damit jede Kauf-Reihenfolge funktioniert; advanceTutorial schaltet
+        // nur weiter, wenn der jeweilige Schritt gerade dran ist.
         if (!get().tutorialDone) {
           const inv = get().inventory;
           const hasSeed = Object.keys(inv).some(
@@ -359,7 +362,8 @@ export const useGameStore = create<GameStore>()(
           const hasPot = Object.keys(inv).some(
             (id) => id.startsWith("pot-") && inv[id] > 0,
           );
-          if (hasSeed && hasPot) get().advanceTutorial("ready-to-plant");
+          if (hasSeed) get().advanceTutorial("bought-seed");
+          if (hasPot) get().advanceTutorial("bought-pot");
         }
       },
 

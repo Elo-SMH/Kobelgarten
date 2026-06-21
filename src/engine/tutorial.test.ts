@@ -4,7 +4,7 @@ import type { TutorialStep } from "./schemas";
 
 const steps: TutorialStep[] = [
   { id: "welcome", trigger: "next" },
-  { id: "buy", trigger: "ready-to-plant" },
+  { id: "buy-seed", trigger: "bought-seed" },
   { id: "done", trigger: "next" },
 ];
 
@@ -16,8 +16,8 @@ describe("advanceTutorial", () => {
 
   it("ignores a trigger that does not match the current step", () => {
     const state = { step: 0, done: false };
-    // Schritt 0 wartet auf "next", nicht auf "ready-to-plant".
-    expect(advanceTutorial(state, "ready-to-plant", steps)).toBe(state);
+    // Schritt 0 wartet auf "next", nicht auf "bought-seed".
+    expect(advanceTutorial(state, "bought-seed", steps)).toBe(state);
   });
 
   it("marks the tutorial done after the last step", () => {

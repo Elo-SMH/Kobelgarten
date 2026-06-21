@@ -8,7 +8,8 @@ import { tutorialStepSchema, type TutorialStep } from "../engine/schemas";
  */
 const rawSteps: TutorialStep[] = [
   { id: "welcome", trigger: "next" },
-  { id: "buy", trigger: "ready-to-plant" },
+  { id: "buy-seed", trigger: "bought-seed" },
+  { id: "buy-pot", trigger: "bought-pot" },
   { id: "plant", trigger: "planted" },
   { id: "water", trigger: "watered" },
   { id: "grow", trigger: "grew" },

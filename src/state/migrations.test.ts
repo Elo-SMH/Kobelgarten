@@ -50,7 +50,7 @@ describe("migrateSave", () => {
       lexicon: {},
       lexiconRewardsClaimed: 0,
       squirrelId: "hasel",
-      tutorialStep: 8,
+      tutorialStep: 9,
       tutorialDone: true,
     });
   });
