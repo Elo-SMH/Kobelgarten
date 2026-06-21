@@ -6,6 +6,7 @@ export const philodendron: PlantSpecies = {
   basePrice: 40,
   growthTicks: 1100, // mittel
   mutability: 0.02, // mittel
+  cuttingCost: 0.25,
   waterDrainPerTick: 0.0011,
   lightNeed: "medium",
   crossGroup: "araceae", // Besonderheit: kreuzbar mit der Monstera-Gruppe

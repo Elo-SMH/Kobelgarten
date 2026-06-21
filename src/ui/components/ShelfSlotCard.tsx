@@ -6,6 +6,7 @@ import { t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { playSound } from "../sound";
 import { PlantCard } from "./PlantCard";
+import { variegationLabel } from "./variegation";
 
 const POT_SIZES: PotSize[] = ["small", "medium", "large"];
 
@@ -89,26 +90,46 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                     </button>
                   ) : null,
                 )}
-                {ownedPropagules.map((propagule) => (
-                  <button
-                    key={propagule.id}
-                    onClick={() =>
-                      setChoice({ kind: "propagule", propaguleId: propagule.id })
-                    }
-                    className="rounded-full bg-hazel-500 px-3 py-1 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
-                  >
-                    {propagule.kind === "cutting" ? "✂️" : "🌱"}{" "}
-                    {speciesById[propagule.genome.speciesId]?.name ??
-                      propagule.genome.speciesId}{" "}
-                    (
-                    {t(
-                      propagule.kind === "cutting"
-                        ? "zucht.kind.cutting"
-                        : "zucht.kind.seed",
-                    )}
-                    )
-                  </button>
-                ))}
+                {ownedPropagules.map((propagule) => {
+                  const variegated =
+                    propagule.genome.variegation.type !== "none";
+                  return (
+                    <button
+                      key={propagule.id}
+                      onClick={() =>
+                        setChoice({
+                          kind: "propagule",
+                          propaguleId: propagule.id,
+                        })
+                      }
+                      className="flex items-center gap-1.5 rounded-full bg-hazel-500 px-3 py-1 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
+                    >
+                      <span>
+                        {propagule.kind === "cutting" ? "✂️" : "🌱"}{" "}
+                        {speciesById[propagule.genome.speciesId]?.name ??
+                          propagule.genome.speciesId}{" "}
+                        (
+                        {t(
+                          propagule.kind === "cutting"
+                            ? "zucht.kind.cutting"
+                            : "zucht.kind.seed",
+                        )}
+                        )
+                      </span>
+                      {/* Sichtbare Mutation: variegierte Vermehrungsgut hervorheben */}
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] ${
+                          variegated
+                            ? "bg-leaf-100 text-leaf-900"
+                            : "bg-cream-50/20 text-cream-50"
+                        }`}
+                      >
+                        {variegated ? "✨ " : ""}
+                        {variegationLabel(propagule.genome.variegation)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </>
           ) : (

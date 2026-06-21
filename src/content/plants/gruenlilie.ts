@@ -6,6 +6,7 @@ export const gruenlilie: PlantSpecies = {
   basePrice: 15,
   growthTicks: 700, // schnell
   mutability: 0.01, // niedrig
+  cuttingCost: 0.1, // macht Kindel: billigster Steckling im Spiel
   waterDrainPerTick: 0.001,
   lightNeed: "medium",
   crossGroup: "chlorophytum",

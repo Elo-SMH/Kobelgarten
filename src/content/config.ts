@@ -23,6 +23,19 @@ export const CONFIG = {
    */
   plantingWaterLevel: 0.5,
 
+  /**
+   * Stecklinge schneiden ist nicht mehr gratis & unbegrenzt: eine Pflanze
+   * muss ein Mindest-Wachstum erreicht haben, und jeder Schnitt kostet sie
+   * Wachstum (art-spezifisch, species.cuttingCost). Das wirkt als natürlicher
+   * Cooldown — die Mutterpflanze muss nachwachsen, bevor sie wieder hergibt.
+   */
+  cutting: {
+    /** Mindest-progress, um überhaupt einen Steckling schneiden zu können. */
+    minProgress: 0.5,
+    /** Schnittkosten, falls eine Art keinen eigenen Wert setzt. */
+    defaultCost: 0.25,
+  },
+
   genetics: {
     seedJitter: 0.1,
     seedHueJitter: 6,

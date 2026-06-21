@@ -37,10 +37,9 @@ export function BreedingScreen() {
     .map((slot) => (slot.plantId ? plants[slot.plantId] : undefined))
     .filter((plant): plant is PlantInstance => !!plant && !plant.dead);
 
-  const cuttable = shelfPlants.filter((plant) => {
-    const phase = phaseOf(plant.progress, CONFIG.growth);
-    return phase === "juvenile" || phase === "adult" || phase === "pracht";
-  });
+  const cuttable = shelfPlants.filter(
+    (plant) => plant.progress >= CONFIG.cutting.minProgress,
+  );
   const crossable = shelfPlants.filter((plant) => {
     const phase = phaseOf(plant.progress, CONFIG.growth);
     return phase === "adult" || phase === "pracht";
@@ -85,7 +84,9 @@ export function BreedingScreen() {
         <p className="mb-3 text-sm text-hazel-500">{t("zucht.cutHint")}</p>
         {cuttable.length === 0 ? (
           <p className="rounded-2xl border border-cream-300 bg-cream-50 p-4 text-sm text-hazel-500">
-            {t("zucht.cutEmpty")}
+            {t("zucht.cutEmpty", {
+              percent: Math.round(CONFIG.cutting.minProgress * 100),
+            })}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -106,6 +107,13 @@ export function BreedingScreen() {
                     </span>
                   )}
                   <PlantSVG plant={plant} species={species} />
+                  <span className="text-[10px] text-hazel-500">
+                    {t("zucht.cutCostLabel", {
+                      percent: Math.round(
+                        (species.cuttingCost ?? CONFIG.cutting.defaultCost) * 100,
+                      ),
+                    })}
+                  </span>
                   <button
                     onClick={() => cutCutting(plant.id)}
                     className="rounded-full bg-leaf-500 px-3 py-1 text-sm font-medium text-white transition hover:bg-leaf-700"

@@ -6,6 +6,7 @@ export const calathea: PlantSpecies = {
   basePrice: 60, // hoher Basiswert
   growthTicks: 1200, // mittel
   mutability: 0.01, // niedrig
+  cuttingCost: 0.3, // mag das Schneiden nicht
   // Besonderheit: pflegeintensiv — säuft schnell leer, mag keinen Fensterplatz
   waterDrainPerTick: 0.002,
   lightNeed: "low",

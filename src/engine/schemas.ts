@@ -181,6 +181,13 @@ export const plantSpeciesSchema = z.object({
   growthTicks: z.number().int().positive(),
   /** Basis-Mutationschance pro Vermehrung. */
   mutability: z.number().min(0).max(1),
+  /**
+   * Wachstum, das ein geschnittener Steckling der Mutterpflanze kostet
+   * (progress-Punkte, 1 = ein voller Adult-Wert). Art-spezifisch: leicht
+   * vermehrbare Arten (Grünlilie) kosten wenig, kostbare (Monstera, Hoya)
+   * viel. Optional — fehlt der Wert, greift CONFIG.cutting.defaultCost.
+   */
+  cuttingCost: z.number().min(0).max(1).optional(),
   waterDrainPerTick: z.number().positive().max(0.01),
   lightNeed: lightNeedSchema,
   /** Bestimmt Kreuz-Kompatibilität. */

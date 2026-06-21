@@ -60,6 +60,15 @@ describe("content contract: plants", () => {
     const ids = allSpecies.map((species) => species.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("every species sets a cuttingCost in (0, 1] (Steckling-Kosten)", () => {
+    for (const species of allSpecies) {
+      expect(species.cuttingCost, `${species.id} ohne cuttingCost`).toBeDefined();
+      const cost = species.cuttingCost ?? 0;
+      expect(cost).toBeGreaterThan(0);
+      expect(cost).toBeLessThanOrEqual(1);
+    }
+  });
 });
 
 describe("content contract: shop items", () => {

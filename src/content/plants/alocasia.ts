@@ -6,6 +6,7 @@ export const alocasia: PlantSpecies = {
   basePrice: 120,
   growthTicks: 2200, // langsam
   mutability: 0.04, // hoch
+  cuttingCost: 0.3,
   // Besonderheit: riskant — trocknet schnell aus und braucht den Fensterplatz
   // (die "niedrige hardiness" aus PLAN 2.8 ist hier als Pflege-Risiko abgebildet)
   waterDrainPerTick: 0.0022,

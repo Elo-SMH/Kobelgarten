@@ -523,8 +523,8 @@ export const useGameStore = create<GameStore>()(
         if (!plant || plant.dead) return;
         const species = speciesById[plant.genome.speciesId];
         if (!species) return;
-        const phase = phaseOf(plant.progress, CONFIG.growth);
-        if (phase === "seed" || phase === "seedling") return;
+        // Steckling erst ab Mindest-Wachstum — kein Gratis-Spam aus Sämlingen.
+        if (plant.progress < CONFIG.cutting.minProgress) return;
         const mods = modifiersOf(talentRanks, squirrelId);
         const nextCounter = propaguleCounter + 1;
         const id = `prop-${nextCounter}`;
@@ -533,7 +533,14 @@ export const useGameStore = create<GameStore>()(
           chanceMultiplier: mods.mutationChanceFactor,
           stabilityBonus: mods.stabilityBonus,
         });
+        // Jeder Schnitt kostet die Mutterpflanze Wachstum (art-spezifisch).
+        const cost = species.cuttingCost ?? CONFIG.cutting.defaultCost;
+        const cutParent = {
+          ...plant,
+          progress: Math.max(0, plant.progress - cost),
+        };
         set({
+          plants: { ...plants, [plantId]: cutParent },
           propagules: { ...propagules, [id]: { id, kind: "cutting", genome } },
           propaguleCounter: nextCounter,
           ...withDiscoveries(state, [genome]),

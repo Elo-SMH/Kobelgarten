@@ -28,8 +28,6 @@ const HOURS = Number(process.argv[2] ?? 200);
 const SEEDS = Number(process.argv[3] ?? 24);
 const TICKS = HOURS * 60;
 const SLOTS = 4;
-/** Brisker, aber menschlich plausibler Zucht-Takt (Stecklinge pro Minute). */
-const CUTS_PER_TICK = 2;
 /** Hauptkultur des Geldkreislaufs: die billigste Art. */
 const CROP = [...allSpecies].sort((a, b) => a.basePrice - b.basePrice)[0];
 const POT_PRICE = CONFIG.shop.potPrices.medium;
@@ -83,26 +81,28 @@ function runSim(seed: number): SimResult {
       slot.plant = tickPlant(watered, CROP, placement, CONFIG.growth);
     }
 
-    // 2) Zucht: von kräftigen Pflanzen Stecklinge schneiden (Variegations-Jagd).
-    let cutsLeft = CUTS_PER_TICK;
-    for (const slot of slots) {
-      if (cutsLeft <= 0) break;
-      const plant = slot.plant;
-      if (!plant) continue;
-      const phase = phaseOf(plant.progress, CONFIG.growth);
-      if (phase === "seed" || phase === "seedling") continue;
-      const species = speciesById[plant.genome.speciesId];
-      const child = mutate(plant.genome, species, rng, CONFIG.genetics);
-      cutsLeft -= 1;
+    // 2) Zucht: Slot 0 ist die Mutterpflanze — sobald reif, wird ein Steckling
+    //    geschnitten (kostet Wachstum, danach wächst sie nach). Realistische
+    //    Trennung: gezüchtet wird hier, verkauft auf den übrigen Plätzen, damit
+    //    das Schneiden nicht den Geldkreislauf abwürgt.
+    const mother = slots[0].plant;
+    if (mother && mother.progress >= CONFIG.cutting.minProgress) {
+      const species = speciesById[mother.genome.speciesId];
+      const child = mutate(mother.genome, species, rng, CONFIG.genetics);
+      const cost = species.cuttingCost ?? CONFIG.cutting.defaultCost;
+      slots[0].plant = {
+        ...mother,
+        progress: Math.max(0, mother.progress - cost),
+      };
       if (child.variegation.type !== "none") {
         if (tick < firstVariegationTick) firstVariegationTick = tick;
         cuttings.push(child); // variegierte Stecklinge weiterziehen
       }
     }
 
-    // 3) Ernten: adulte Pflanzen verkaufen (Topf kommt zurück).
-    for (const slot of slots) {
-      const plant = slot.plant;
+    // 3) Ernten: adulte Verkaufs-Pflanzen (Slots ab 1) verkaufen.
+    for (let i = 1; i < slots.length; i++) {
+      const plant = slots[i].plant;
       if (!plant || plant.dead) continue;
       const phase = phaseOf(plant.progress, CONFIG.growth);
       if (phase !== "adult" && phase !== "pracht") continue;
@@ -110,24 +110,23 @@ function runSim(seed: number): SimResult {
       const value = plantValue(plant, species, CONFIG.growth, CONFIG.economy);
       hazelnuts += effectiveSellPrice(value, 1);
       pots += 1;
-      slot.plant = null;
+      slots[i].plant = null;
     }
 
-    // 4) Nachpflanzen: freie Plätze füllen. Variegierte Stecklinge zuerst
-    //    (mehr Wert), sonst billigsten Samen kaufen.
-    for (const slot of slots) {
-      if (slot.plant) continue;
-      // Topf besorgen (aus Bestand oder kaufen).
+    // 4) Nachpflanzen: Slot 0 immer als Mutterpflanze (frischer Samen);
+    //    Verkaufs-Plätze bevorzugt aus variegierten Stecklingen, sonst Samen.
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].plant) continue;
       if (pots <= 0) {
         if (hazelnuts < POT_PRICE) continue;
         hazelnuts -= POT_PRICE;
         pots += 1;
       }
-      const cutting = cuttings.shift();
+      const cutting = i >= 1 ? cuttings.shift() : undefined;
       if (cutting) {
         pots -= 1;
         plantId += 1;
-        slot.plant = createPlant(
+        slots[i].plant = createPlant(
           `sim-${plantId}`,
           cutting,
           "medium",
@@ -140,7 +139,7 @@ function runSim(seed: number): SimResult {
       pots -= 1;
       plantId += 1;
       const genome = createSeedGenome(CROP.id, rng, CONFIG.genetics);
-      slot.plant = createPlant(`sim-${plantId}`, genome, "medium");
+      slots[i].plant = createPlant(`sim-${plantId}`, genome, "medium");
     }
 
     recordAffordability(tick);
