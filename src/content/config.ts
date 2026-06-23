@@ -68,18 +68,21 @@ export const CONFIG = {
     // Reskaliert ALLE Pro-Art-growthTicks — die „~Xh“-Kommentare in
     // content/plants/* sind Rohwerte vor diesem Faktor.
     growthSpeed: 8,
-    // M6-Pacing: schnellerer Wasserverbrauch macht Gießen zur regelmäßigen
-    // Aufgabe (statt einmal alle ~11h). Pflegeintensive Arten (Calathea,
-    // Alocasia) wollen jetzt spürbar öfter Wasser.
-    waterDrainMultiplier: 12,
+    // Wasserverbrauch: ein „Standard"-Verbrauch von 0.001/Tick leert den vollen
+    // Tank (100 % → 0 %) in genau 24 h (1440 Ticks). Arten skalieren relativ
+    // dazu über species.waterDrainPerTick — Sukkulenten (Hoya) halten länger,
+    // durstige Diven (Alocasia, Calathea) kürzer. 1 / (1440 × 0.001) ≈ 0.694.
+    waterDrainMultiplier: 1 / (1440 * 0.001),
     phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
     lowWaterThreshold: 0.2,
     lowWaterGrowthFactor: 0.5,
-    // trocken: Tod nach ~1000 Ticks (≈ 16h) bei hardiness 1. Bewusst träge,
-    // damit der schnellere Wasserverbrauch (s.o.) einen Offline-Tag nicht
-    // direkt tödlich macht — Gießen optimiert das Wachstum, Vernachlässigung
-    // bremst und tötet erst nach Stunden.
-    wiltPerTick: 0.001,
+    // Bei 0 % Wasser (die Pflanze welkt) wächst sie nur noch mit 20 % Tempo,
+    // also 80 % langsamer als versorgt.
+    wiltGrowthFactor: 0.2,
+    // Welke: ab leerem Tank (0 % Wasser) dauert es bei hardiness 1 genau 5 Tage
+    // (7200 Ticks), bis die Pflanze verwelkt. Robuste Arten (hardiness > 1)
+    // halten länger, empfindliche kürzer. 1 / (5 × 24 × 60).
+    wiltPerTick: 1 / (5 * 24 * 60),
     wiltRecoveryPerTick: 0.004,
     lightFactors: {
       low: { window: 0.9, shade: 1 },
@@ -94,6 +97,20 @@ export const CONFIG = {
     // Auto-Gießen (Tier-3-Talent) füllt unter 10 % Wasserstand nach
     autoWaterThreshold: 0.1,
   } satisfies GrowthConfig,
+
+  /**
+   * Verwelkte Pflanze „zu Dünger verarbeiten": statt sie nur zu entsorgen,
+   * gibt es 1 Dünger und eine Chance, noch einen Steckling zu retten. Das
+   * Bewurzelungspulver (Shop-Upgrade) hebt diese Chance auf 100 %.
+   */
+  compost: {
+    /** Dünger, den eine verwelkte Pflanze immer abwirft. */
+    fertilizerYield: 1,
+    /** Basis-Chance auf einen geretteten Steckling. */
+    cuttingChance: 0.25,
+    /** Chance mit Bewurzelungspulver (garantiert). */
+    rootingPowderCuttingChance: 1,
+  },
 
   progression: {
     // Level 2 nach einem guten Verkaufstag, Level 30 als Langzeitziel
@@ -171,6 +188,9 @@ export const CONFIG = {
     fertilizerPrice: 25,
     gelbtafelnPrice: 30,
     wateringCanUpgradePrice: 150,
+    // Premium-Upgrade: garantiert beim Kompostieren einen Steckling. Bewusst
+    // teurer als Verbrauchsgüter — ein einmaliger Kauf, der dauerhaft wirkt.
+    rootingPowderPrice: 180,
     shelfSlot: { basePrice: 100, growthFactor: 1.5 } satisfies ShelfSlotPricing,
     maxShelfSlots: 12,
     /** Verkäufe ab diesem Wert fragen nach (Fehlklick-Schutz). */

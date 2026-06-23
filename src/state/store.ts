@@ -123,9 +123,12 @@ interface GameStore extends Save {
    * wenn ein Eichhörnchen-Chance-Bonus trifft. `id` steigt pro Treffer, damit
    * die UI auch bei gleicher Art neu animiert.
    */
-  bonusToast: { kind: "doubleSale" | "freeCutting"; id: number } | null;
+  bonusToast: {
+    kind: "doubleSale" | "freeCutting" | "rescuedCutting";
+    id: number;
+  } | null;
   /** Zeigt einen Glücks-Hinweis an (Toast). */
-  flashBonus: (kind: "doubleSale" | "freeCutting") => void;
+  flashBonus: (kind: "doubleSale" | "freeCutting" | "rescuedCutting") => void;
   /** Blendet den Glücks-Hinweis aus (nur, wenn die id noch aktuell ist). */
   clearBonusToast: (id: number) => void;
 }
@@ -177,6 +180,7 @@ function pickSave(state: Save): Save {
     squirrelId: state.squirrelId,
     tutorialStep: state.tutorialStep,
     tutorialDone: state.tutorialDone,
+    rootingPowder: state.rootingPowder,
   };
 }
 
@@ -202,6 +206,7 @@ function freshSave(now: number): Save {
     squirrelId: null,
     tutorialStep: 0,
     tutorialDone: false,
+    rootingPowder: false,
   };
 }
 
@@ -355,8 +360,16 @@ export const useGameStore = create<GameStore>()(
         const price = Math.max(1, Math.round(base * (1 - mods.shopDiscount)));
         if (hazelnuts < price) return;
         if (item.kind === "upgrade") {
-          if (item.upgradeId === "wateringCan" && wateringCanLevel >= 2) return;
-          set({ hazelnuts: hazelnuts - price, wateringCanLevel: 2 });
+          if (item.upgradeId === "wateringCan") {
+            if (wateringCanLevel >= 2) return;
+            set({ hazelnuts: hazelnuts - price, wateringCanLevel: 2 });
+            return;
+          }
+          if (item.upgradeId === "rootingPowder") {
+            if (get().rootingPowder) return;
+            set({ hazelnuts: hazelnuts - price, rootingPowder: true });
+            return;
+          }
           return;
         }
         set({
@@ -520,19 +533,76 @@ export const useGameStore = create<GameStore>()(
       },
 
       removePlant: (plantId) => {
-        const { plants, shelf, inventory, activeEvents } = get();
+        const state = get();
+        const {
+          plants,
+          shelf,
+          inventory,
+          activeEvents,
+          propagules,
+          propaguleCounter,
+          rootingPowder,
+          talentRanks,
+          squirrelId,
+          tick,
+        } = state;
         const plant = plants[plantId];
         if (!plant || !plant.dead) return;
+        const species = speciesById[plant.genome.speciesId];
+
         const remaining = { ...plants };
         delete remaining[plantId];
+
+        // „Zu Dünger verarbeiten": der Topf kommt zurück, dazu gibt es immer
+        // Dünger und eine Chance, noch einen Steckling der verwelkten Pflanze
+        // zu retten (Bewurzelungspulver → garantiert).
+        const nextInventory = withCount(
+          withCount(inventory, potItemId(plant.potSize), 1),
+          "duenger",
+          CONFIG.compost.fertilizerYield,
+        );
+
+        const chance = rootingPowder
+          ? CONFIG.compost.rootingPowderCuttingChance
+          : CONFIG.compost.cuttingChance;
+        // Deterministischer Wurf pro Pflanze & Tick — eine Pflanze wird nur
+        // einmal kompostiert, der Ausgang ist also reproduzierbar.
+        const rescueRng = createRng(hashSeed(`compost:${plantId}:${tick}`));
+        const rescued = species != null && rescueRng.chance(chance);
+
+        let nextPropagules = propagules;
+        let nextPropaguleCounter = propaguleCounter;
+        let discoveries: Partial<DiscoveryState> = {};
+        if (rescued && species) {
+          const mods = modifiersOf(talentRanks, squirrelId);
+          nextPropaguleCounter = propaguleCounter + 1;
+          const id = `prop-${nextPropaguleCounter}`;
+          const cutRng = createRng(
+            hashSeed(`compost-cut:${plantId}:${nextPropaguleCounter}`),
+          );
+          const genome = mutate(plant.genome, species, cutRng, CONFIG.genetics, {
+            chanceMultiplier: mods.mutationChanceFactor,
+            stabilityBonus: mods.stabilityBonus,
+          });
+          nextPropagules = {
+            ...propagules,
+            [id]: { id, kind: "cutting", genome },
+          };
+          discoveries = withDiscoveries(state, [genome]);
+        }
+
         set({
           plants: remaining,
           shelf: shelf.map((entry) =>
             entry.plantId === plantId ? { ...entry, plantId: null } : entry,
           ),
-          inventory: withCount(inventory, potItemId(plant.potSize), 1),
+          inventory: nextInventory,
           activeEvents: pruneEventsForPlant(activeEvents, plantId),
+          propagules: nextPropagules,
+          propaguleCounter: nextPropaguleCounter,
+          ...discoveries,
         });
+        if (rescued) get().flashBonus("rescuedCutting");
       },
 
       cutCutting: (plantId) => {

@@ -14,6 +14,7 @@ const DESC_KEYS: Record<string, MessageKey> = {
   duenger: "item.duenger.desc",
   gelbtafeln: "item.gelbtafeln.desc",
   "giesskanne-gross": "item.giesskanne-gross.desc",
+  bewurzelungspulver: "item.bewurzelungspulver.desc",
 };
 
 interface ShopItemRowProps {
@@ -25,6 +26,7 @@ export function ShopItemRow({ item, offer }: ShopItemRowProps) {
   const hazelnuts = useGameStore((state) => state.hazelnuts);
   const owned = useGameStore((state) => state.inventory[item.id] ?? 0);
   const wateringCanLevel = useGameStore((state) => state.wateringCanLevel);
+  const rootingPowder = useGameStore((state) => state.rootingPowder);
   const talentRanks = useGameStore((state) => state.talentRanks);
   const buyItem = useGameStore((state) => state.buyItem);
 
@@ -37,8 +39,8 @@ export function ShopItemRow({ item, offer }: ShopItemRowProps) {
   const discounted = price < item.price;
   const alreadyUpgraded =
     item.kind === "upgrade" &&
-    item.upgradeId === "wateringCan" &&
-    wateringCanLevel >= 2;
+    ((item.upgradeId === "wateringCan" && wateringCanLevel >= 2) ||
+      (item.upgradeId === "rootingPowder" && rootingPowder));
   const descKey = item.kind === "seed" ? "item.seed.desc" : DESC_KEYS[item.id];
 
   return (

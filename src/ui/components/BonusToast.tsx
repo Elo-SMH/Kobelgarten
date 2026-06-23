@@ -22,8 +22,12 @@ export function BonusToast() {
   }, [toast, clearBonusToast]);
 
   if (!toast) return null;
-  const message =
-    toast.kind === "doubleSale" ? t("bonus.doubleSale") : t("bonus.freeCutting");
+  const BONUS_KEYS = {
+    doubleSale: "bonus.doubleSale",
+    freeCutting: "bonus.freeCutting",
+    rescuedCutting: "bonus.rescuedCutting",
+  } as const;
+  const message = t(BONUS_KEYS[toast.kind]);
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-16 z-40 flex justify-center px-4">

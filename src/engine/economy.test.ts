@@ -17,6 +17,7 @@ const growthConfig: GrowthConfig = {
   phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
   lowWaterThreshold: 0.2,
   lowWaterGrowthFactor: 0.5,
+  wiltGrowthFactor: 0.2,
   wiltPerTick: 0.002,
   wiltRecoveryPerTick: 0.004,
   lightFactors: {

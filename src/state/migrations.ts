@@ -9,7 +9,7 @@ import type { Genome, LightPlacement } from "../engine/schemas";
  * Versioned saves. Any change to the save shape requires bumping
  * SAVE_VERSION and adding a migration step below — never break old saves.
  */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export interface SaveV1 {
   tick: number;
@@ -76,8 +76,16 @@ export interface SaveV6 extends SaveV5 {
   tutorialDone: boolean;
 }
 
+export interface SaveV7 extends SaveV6 {
+  /**
+   * Bewurzelungspulver-Upgrade gekauft: verwelkte Pflanzen geben dann
+   * garantiert einen Steckling beim Kompostieren (sonst nur mit Chance).
+   */
+  rootingPowder: boolean;
+}
+
 /** The current save shape. */
-export type Save = SaveV6;
+export type Save = SaveV7;
 
 export function createDefaultShelf(): ShelfSlotState[] {
   return CONFIG.shelf.slots.map((placement) => ({ placement, plantId: null }));
@@ -154,6 +162,12 @@ const migrations: Record<number, Migration> = {
     squirrelId: "hasel",
     tutorialStep: tutorialSteps.length,
     tutorialDone: true,
+  }),
+  // v6 → v7: Bewurzelungspulver-Upgrade (Kompostieren verwelkter Pflanzen).
+  // Bestandsspieler besitzen es noch nicht.
+  7: (state) => ({
+    ...state,
+    rootingPowder: false,
   }),
 };
 

@@ -81,12 +81,17 @@ export function PlantCard({ plantId }: PlantCardProps) {
       />
 
       {plant.dead ? (
-        <button
-          onClick={() => removePlant(plant.id)}
-          className="mt-1 rounded-full bg-hazel-500 px-4 py-1.5 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
-        >
-          🗑️ {t("plant.removeAction")}
-        </button>
+        <div className="mt-1 flex flex-col gap-1">
+          <button
+            onClick={() => removePlant(plant.id)}
+            className="rounded-full bg-hazel-500 px-4 py-1.5 text-sm font-medium text-cream-50 transition hover:bg-hazel-700"
+          >
+            ♻️ {t("plant.compostAction")}
+          </button>
+          <p className="text-center text-xs text-hazel-500">
+            {t("plant.compostHint")}
+          </p>
+        </div>
       ) : (
         <div className="mt-1 flex gap-2">
           <button

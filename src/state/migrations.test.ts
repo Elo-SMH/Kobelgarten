@@ -52,6 +52,7 @@ describe("migrateSave", () => {
       squirrelId: "hasel",
       tutorialStep: 9,
       tutorialDone: true,
+      rootingPowder: false,
     });
   });
 
@@ -81,6 +82,34 @@ describe("migrateSave", () => {
     // Bestehende Felder bleiben unangetastet.
     expect(migrated.xp).toBe(130);
     expect(migrated.talentRanks).toEqual({ feilschen: 1 });
+  });
+
+  it("v6 → v7 starts existing players without the rooting powder upgrade", () => {
+    const v6 = {
+      tick: 5,
+      lastTickAt: 1_000_000,
+      hazelnuts: 300,
+      plants: {},
+      shelf: [],
+      plantCounter: 0,
+      inventory: {},
+      wateringCanLevel: 1,
+      propagules: {},
+      propaguleCounter: 0,
+      xp: 0,
+      talentRanks: {},
+      activeEvents: [],
+      eventCounter: 0,
+      lexicon: {},
+      lexiconRewardsClaimed: 0,
+      squirrelId: "fips",
+      tutorialStep: 9,
+      tutorialDone: true,
+    };
+    const migrated = migrateSave(v6, 6);
+    expect(migrated.rootingPowder).toBe(false);
+    // Bestehende Felder bleiben unangetastet.
+    expect(migrated.squirrelId).toBe("fips");
   });
 
   it("v3 → v4 adds the empty breeding inventory", () => {

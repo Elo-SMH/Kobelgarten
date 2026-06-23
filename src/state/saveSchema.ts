@@ -78,6 +78,7 @@ export const saveSchema = z.object({
   squirrelId: z.string().nullable(),
   tutorialStep: z.number(),
   tutorialDone: z.boolean(),
+  rootingPowder: z.boolean(),
 }) satisfies z.ZodType<Save>;
 
 /**

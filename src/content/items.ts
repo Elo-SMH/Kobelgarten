@@ -65,6 +65,14 @@ const rawGearItems: ShopItem[] = [
     price: CONFIG.shop.wateringCanUpgradePrice,
     upgradeId: "wateringCan",
   },
+  {
+    kind: "upgrade",
+    id: "bewurzelungspulver",
+    name: "Bewurzelungspulver",
+    emoji: "🫙",
+    price: CONFIG.shop.rootingPowderPrice,
+    upgradeId: "rootingPowder",
+  },
 ];
 
 export const gearItems: ShopItem[] = rawGearItems.map((item) =>

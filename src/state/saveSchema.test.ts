@@ -43,6 +43,7 @@ function validSave(): Save {
     squirrelId: "fips",
     tutorialStep: 8,
     tutorialDone: true,
+    rootingPowder: false,
   };
 }
 

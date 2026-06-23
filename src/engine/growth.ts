@@ -41,6 +41,8 @@ export interface GrowthConfig {
   /** Unter diesem Wasserstand wächst die Pflanze nur gebremst. */
   lowWaterThreshold: number;
   lowWaterGrowthFactor: number;
+  /** Wachstumsfaktor bei 0 % Wasser (Welke) — z.B. 0.2 = 80 % langsamer. */
+  wiltGrowthFactor: number;
   /** Welke-Zunahme pro trockenem Tick, geteilt durch genome.hardiness. */
   wiltPerTick: number;
   /** Welke-Erholung pro versorgtem Tick. */
@@ -131,38 +133,47 @@ export function tickPlant(
   // Der Buff läuft mit der Zeit ab, auch wenn die Pflanze gerade nicht wächst.
   const fertilizerTicks = Math.max(0, plant.fertilizerTicks - 1);
   let wilt = plant.wilt;
-  let progress = plant.progress;
 
   if (water <= 0) {
+    // Leerer Tank: die Pflanze welkt (hardiness puffert) und wächst nur noch
+    // gebremst (s.u.) — sie stirbt aber erst nach Tagen, nicht sofort.
     wilt = Math.min(
       1,
       wilt + (config.wiltPerTick * mods.wiltFactor) / plant.genome.hardiness,
     );
   } else {
     wilt = Math.max(0, wilt - config.wiltRecoveryPerTick);
-    const waterFactor =
-      water < config.lowWaterThreshold ? config.lowWaterGrowthFactor : 1;
-    const lightFactor = config.lightFactors[species.lightNeed][placement];
-    const fertilizerFactor =
-      plant.fertilizerTicks > 0 ? config.fertilizer.growthFactor : 1;
-    const cap = Math.min(config.prachtProgress, config.potCaps[plant.potSize]);
-    // max(): ein bereits über dem Topf-Limit stehender progress (z.B. nach
-    // einer Migration) wird nie rückwirkend gekürzt.
-    progress = Math.max(
-      progress,
-      Math.min(
-        cap,
-        progress +
-          (plant.genome.growthRate *
-            waterFactor *
-            lightFactor *
-            fertilizerFactor *
-            mods.growthFactor *
-            config.growthSpeed) /
-            species.growthTicks,
-      ),
-    );
   }
+
+  // Wachstum unabhängig vom Wasserstand, der Faktor hängt aber davon ab:
+  // 0 % (Welke) → wiltGrowthFactor (80 % langsamer), knapp unter dem
+  // Schwellwert → lowWaterGrowthFactor, sonst volles Tempo.
+  const waterFactor =
+    water <= 0
+      ? config.wiltGrowthFactor
+      : water < config.lowWaterThreshold
+        ? config.lowWaterGrowthFactor
+        : 1;
+  const lightFactor = config.lightFactors[species.lightNeed][placement];
+  const fertilizerFactor =
+    plant.fertilizerTicks > 0 ? config.fertilizer.growthFactor : 1;
+  const cap = Math.min(config.prachtProgress, config.potCaps[plant.potSize]);
+  // max(): ein bereits über dem Topf-Limit stehender progress (z.B. nach
+  // einer Migration) wird nie rückwirkend gekürzt.
+  const progress = Math.max(
+    plant.progress,
+    Math.min(
+      cap,
+      plant.progress +
+        (plant.genome.growthRate *
+          waterFactor *
+          lightFactor *
+          fertilizerFactor *
+          mods.growthFactor *
+          config.growthSpeed) /
+          species.growthTicks,
+    ),
+  );
 
   // Sonnenbrand welkt unabhängig vom Gießen — hardiness puffert auch hier.
   if (mods.extraWiltPerTick > 0) {

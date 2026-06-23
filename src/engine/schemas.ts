@@ -71,7 +71,7 @@ export const shopItemSchema = z.discriminatedUnion("kind", [
   z.object({
     ...shopItemBase,
     kind: z.literal("upgrade"),
-    upgradeId: z.enum(["wateringCan"]),
+    upgradeId: z.enum(["wateringCan", "rootingPowder"]),
   }),
 ]);
 export type ShopItem = z.infer<typeof shopItemSchema>;

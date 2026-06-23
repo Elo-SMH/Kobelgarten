@@ -19,6 +19,7 @@ const config: GrowthConfig = {
   phaseThresholds: { seedling: 0.05, juvenile: 0.3, adult: 1 },
   lowWaterThreshold: 0.2,
   lowWaterGrowthFactor: 0.5,
+  wiltGrowthFactor: 0.2,
   wiltPerTick: 0.002,
   wiltRecoveryPerTick: 0.004,
   lightFactors: {
@@ -135,12 +136,32 @@ describe("tickPlant", () => {
     expect(fast.progress).toBeCloseTo(slow.progress * 3, 5);
   });
 
-  it("stops growing and wilts when dry", () => {
+  it("grows slowly (wiltGrowthFactor) and wilts when dry", () => {
     const dry: PlantInstance = { ...createPlant("p1", makeGenome(), "large"), water: 0 };
     const after = tickPlantMany(dry, species, "window", 50, config);
-    expect(after.progress).toBe(0);
+    // 80 % langsamer: pro Tick growthRate × wiltGrowthFactor / growthTicks.
+    expect(after.progress).toBeCloseTo(
+      (50 * config.wiltGrowthFactor) / species.growthTicks,
+      10,
+    );
     expect(after.wilt).toBeCloseTo(50 * config.wiltPerTick, 10);
     expect(after.dead).toBe(false);
+  });
+
+  it("a wilting plant grows at wiltGrowthFactor of a watered one (80% slower)", () => {
+    const watered = tickPlant(
+      createPlant("a", makeGenome(), "large"),
+      species,
+      "window",
+      config,
+    );
+    const dry: PlantInstance = { ...createPlant("b", makeGenome(), "large"), water: 0 };
+    const wilting = tickPlant(dry, species, "window", config);
+    expect(wilting.progress).toBeCloseTo(
+      watered.progress * config.wiltGrowthFactor,
+      10,
+    );
+    expect(wilting.wilt).toBeGreaterThan(0);
   });
 
   it("dies after prolonged neglect", () => {
@@ -222,7 +243,12 @@ describe("tickPlant", () => {
     };
     const after = tickPlantMany(dry, species, "window", 10, config);
     expect(after.fertilizerTicks).toBe(config.fertilizer.durationTicks - 10);
-    expect(after.progress).toBe(0);
+    // Trocken wächst sie nur gebremst, der Dünger-Buff wirkt dabei trotzdem.
+    expect(after.progress).toBeCloseTo(
+      (10 * config.wiltGrowthFactor * config.fertilizer.growthFactor) /
+        species.growthTicks,
+      10,
+    );
   });
 
   it("a dead plant no longer changes", () => {
