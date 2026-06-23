@@ -3,7 +3,7 @@ import { gearItems, seedItems, shopItemById } from "../../content/items";
 import { allTalents } from "../../content/skills";
 import { shelfSlotPrice } from "../../engine/economy";
 import { computeModifiers } from "../../engine/skills";
-import { t } from "../../i18n";
+import { itemName, t } from "../../i18n";
 import { todaysOffer } from "../../state/shop";
 import { useGameStore } from "../../state/store";
 import { ShopItemRow } from "./ShopItemRow";
@@ -36,7 +36,7 @@ export function ShopBuyTab() {
             🏷️ {t("shop.dailyOfferHeading")}
           </h2>
           <p className="mt-1 font-semibold">
-            {offerItem.emoji} {offerItem.name}{" "}
+            {offerItem.emoji} {itemName(offerItem)}{" "}
             <span className="ml-1 rounded-full bg-leaf-500 px-2 py-0.5 text-xs font-bold text-white">
               {t("shop.dailyOfferBadge", {
                 percent: Math.round(offer.discount * 100),

@@ -1,6 +1,6 @@
 import { speciesById } from "../../content/plants";
 import type { ActiveEvent } from "../../engine/events";
-import { t } from "../../i18n";
+import { plantName, t } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { VARIEG_KEYS } from "./variegation";
 
@@ -25,10 +25,10 @@ export function EventBanner() {
 
   if (activeEvents.length === 0) return null;
 
-  const plantName = (plantId: string): string => {
+  const plantLabel = (plantId: string): string => {
     const plant = plants[plantId];
     const species = plant ? speciesById[plant.genome.speciesId] : undefined;
-    return species?.name ?? plantId;
+    return species ? plantName(species) : plantId;
   };
 
   return (
@@ -44,9 +44,9 @@ export function EventBanner() {
         >
           <span className="min-w-0 flex-1">
             {event.kind === "gnats" &&
-              t("events.gnats", { plant: plantName(event.plantId) })}
+              t("events.gnats", { plant: plantLabel(event.plantId) })}
             {event.kind === "sunburn" &&
-              t("events.sunburn", { plant: plantName(event.plantId) })}
+              t("events.sunburn", { plant: plantLabel(event.plantId) })}
             {event.kind === "collector" &&
               t("events.collector", {
                 factor: event.priceFactor,

@@ -2,7 +2,7 @@ import { allTalents } from "../../content/skills";
 import type { DailyOffer } from "../../engine/economy";
 import type { ShopItem } from "../../engine/schemas";
 import { computeModifiers } from "../../engine/skills";
-import { t, type MessageKey } from "../../i18n";
+import { itemName, t, type MessageKey } from "../../i18n";
 import { itemPrice } from "../../state/shop";
 import { useGameStore } from "../../state/store";
 import { playSound } from "../sound";
@@ -47,7 +47,7 @@ export function ShopItemRow({ item, offer }: ShopItemRowProps) {
         {item.emoji}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold">{item.name}</p>
+        <p className="font-semibold">{itemName(item)}</p>
         {descKey && <p className="text-xs text-hazel-500">{t(descKey)}</p>}
         {item.kind !== "upgrade" && owned > 0 && (
           <p className="text-xs text-leaf-700">

@@ -6,7 +6,7 @@ import { effectiveSellPrice, plantValue } from "../../engine/economy";
 import { matchingCollector } from "../../engine/events";
 import { phaseOf, type GrowthPhase } from "../../engine/growth";
 import { computeModifiers } from "../../engine/skills";
-import { t, type MessageKey } from "../../i18n";
+import { plantName, t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { playSound } from "../sound";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -77,7 +77,7 @@ export function ShopSellTab() {
                 <PlantSVG plant={plant} species={species} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">{species.name}</p>
+                <p className="font-semibold">{plantName(species)}</p>
                 <p className="text-xs text-hazel-500">{t(PHASE_KEYS[phase])}</p>
                 {quest && (
                   <p className="text-xs font-semibold text-hazel-700">
@@ -90,7 +90,11 @@ export function ShopSellTab() {
               <button
                 onClick={() => {
                   if (value >= CONFIG.shop.sellConfirmThreshold) {
-                    setPending({ plantId: plant.id, name: species.name, value });
+                    setPending({
+                      plantId: plant.id,
+                      name: plantName(species),
+                      value,
+                    });
                   } else {
                     playSound("sell");
                     sellPlant(plant.id);

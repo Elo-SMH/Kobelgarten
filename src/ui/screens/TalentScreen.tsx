@@ -9,7 +9,7 @@ import {
   respecCost,
   totalSkillPoints,
 } from "../../engine/skills";
-import { t, type MessageKey } from "../../i18n";
+import { talentName, t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 
 const TREE_KEYS: Record<TalentTree, MessageKey> = {
@@ -125,7 +125,7 @@ export function TalentScreen() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">
-                        {talent.name}{" "}
+                        {talentName(talent)}{" "}
                         <span className="font-normal text-hazel-300">
                           · {t("talents.tierLabel", { tier: talent.tier })}
                         </span>

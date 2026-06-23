@@ -3,7 +3,7 @@ import { CONFIG } from "../../content/config";
 import { squirrelById } from "../../content/squirrels";
 import { levelForXp } from "../../engine/skills";
 import { dateKey } from "../../engine/economy";
-import { t, type MessageKey } from "../../i18n";
+import { SUPPORTED_LOCALES, t, type Locale, type MessageKey } from "../../i18n";
 import { SAVE_VERSION } from "../../state/migrations";
 import { useSettingsStore } from "../../state/settings";
 import { clearSlot, getActiveSlot, readSlot, SLOT_COUNT } from "../../state/slots";
@@ -53,11 +53,55 @@ function Toggle({
   );
 }
 
+const LANG_LABEL_KEYS: Record<Locale, MessageKey> = {
+  de: "menu.langDe",
+  en: "menu.langEn",
+};
+
+/** Segmentierter Sprachumschalter im Cozy-Stil. */
+function LanguageSelect({
+  value,
+  onChange,
+}: {
+  value: Locale;
+  onChange: (language: Locale) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-cream-300 bg-cream-50 px-4 py-3">
+      <span className="text-sm font-medium text-hazel-700">
+        {t("menu.language")}
+      </span>
+      <div className="flex gap-1 rounded-full bg-cream-200 p-1">
+        {SUPPORTED_LOCALES.map((locale) => (
+          <button
+            key={locale}
+            type="button"
+            aria-pressed={value === locale}
+            onClick={() => {
+              playSound("click");
+              onChange(locale);
+            }}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              value === locale
+                ? "bg-leaf-500 text-white"
+                : "text-hazel-700 hover:bg-cream-300"
+            }`}
+          >
+            {t(LANG_LABEL_KEYS[locale])}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function MenuScreen({ onClose }: MenuScreenProps) {
   const sound = useSettingsStore((state) => state.sound);
   const reducedMotion = useSettingsStore((state) => state.reducedMotion);
+  const language = useSettingsStore((state) => state.language);
   const setSound = useSettingsStore((state) => state.setSound);
   const setReducedMotion = useSettingsStore((state) => state.setReducedMotion);
+  const setLanguage = useSettingsStore((state) => state.setLanguage);
 
   // Auf Änderungen des aktiven Slots reagieren, damit dessen Karte live bleibt.
   useGameStore((state) => state.hazelnuts);
@@ -137,6 +181,7 @@ export function MenuScreen({ onClose }: MenuScreenProps) {
         <h2 className="text-xl font-semibold text-leaf-900">
           {t("menu.settingsHeading")}
         </h2>
+        <LanguageSelect value={language} onChange={setLanguage} />
         <Toggle label={t("menu.sound")} checked={sound} onChange={setSound} />
         <Toggle
           label={t("menu.reducedMotion")}

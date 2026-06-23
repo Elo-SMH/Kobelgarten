@@ -6,7 +6,7 @@ import { canCross } from "../../engine/genetics";
 import { phaseOf, type PlantInstance } from "../../engine/growth";
 import type { Genome } from "../../engine/schemas";
 import { computeModifiers } from "../../engine/skills";
-import { t } from "../../i18n";
+import { plantName, t } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { PlantSVG } from "../components/PlantSVG";
 import { variegationLabel } from "../components/variegation";
@@ -97,7 +97,9 @@ export function BreedingScreen() {
                   key={plant.id}
                   className="flex flex-col items-center gap-1 rounded-2xl border border-cream-300 bg-cream-50 p-3 shadow-sm"
                 >
-                  <span className="text-sm font-semibold">{species.name}</span>
+                  <span className="text-sm font-semibold">
+                    {plantName(species)}
+                  </span>
                   <span className="text-xs text-hazel-500">
                     {variegationLabel(plant.genome.variegation)}
                   </span>
@@ -153,7 +155,7 @@ export function BreedingScreen() {
                     }`}
                   >
                     <span className="text-sm font-semibold">
-                      {species.name}
+                      {plantName(species)}
                     </span>
                     <span className="text-xs text-hazel-500">
                       {variegationLabel(plant.genome.variegation)}
@@ -212,7 +214,7 @@ export function BreedingScreen() {
                   >
                     <span className="font-medium">
                       {propagule.kind === "cutting" ? "✂️" : "🌱"}{" "}
-                      {species?.name ?? propagule.genome.speciesId}{" "}
+                      {species ? plantName(species) : propagule.genome.speciesId}{" "}
                       <span className="text-xs text-hazel-500">
                         (
                         {t(

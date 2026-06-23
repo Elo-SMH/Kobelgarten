@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { potItemId, seedItems, shopItemById } from "../../content/items";
+import { potItemId, seedItems } from "../../content/items";
 import { speciesById } from "../../content/plants";
 import type { PotSize } from "../../engine/schemas";
-import { t, type MessageKey } from "../../i18n";
+import { itemName, plantName, t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { playSound } from "../sound";
 import { PlantCard } from "./PlantCard";
@@ -85,14 +85,14 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                       }
                       className="rounded-full bg-leaf-500 px-3 py-1 text-sm font-medium text-white transition hover:bg-leaf-700"
                     >
-                      🌱 {shopItemById[item.id]?.name ?? item.id} ×
-                      {inventory[item.id]}
+                      🌱 {itemName(item)} ×{inventory[item.id]}
                     </button>
                   ) : null,
                 )}
                 {ownedPropagules.map((propagule) => {
                   const variegated =
                     propagule.genome.variegation.type !== "none";
+                  const species = speciesById[propagule.genome.speciesId];
                   return (
                     <button
                       key={propagule.id}
@@ -106,8 +106,9 @@ export function ShelfSlotCard({ slotIndex }: ShelfSlotCardProps) {
                     >
                       <span>
                         {propagule.kind === "cutting" ? "✂️" : "🌱"}{" "}
-                        {speciesById[propagule.genome.speciesId]?.name ??
-                          propagule.genome.speciesId}{" "}
+                        {species
+                          ? plantName(species)
+                          : propagule.genome.speciesId}{" "}
                         (
                         {t(
                           propagule.kind === "cutting"

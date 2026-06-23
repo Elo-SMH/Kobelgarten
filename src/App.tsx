@@ -19,6 +19,9 @@ export function App() {
   const [screen, setScreen] = useState<Screen>("kobel");
   const squirrelId = useGameStore((state) => state.squirrelId);
   const reducedMotion = useSettingsStore((state) => state.reducedMotion);
+  // Auf die Sprache subscriben: ein Wechsel rendert die ganze App (und damit
+  // alle t()-Aufrufe der Kinder) neu — das ist der Reaktivitäts-Anker für i18n.
+  const language = useSettingsStore((state) => state.language);
 
   useEffect(() => {
     const catchUp = () => useGameStore.getState().catchUp(Date.now());
@@ -35,6 +38,11 @@ export function App() {
     const root = document.documentElement;
     root.classList.toggle("reduce-motion", reducedMotion);
   }, [reducedMotion]);
+
+  // <html lang> mit der UI-Sprache synchron halten (Screenreader, Browser).
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   // Erster Start: erst Eichhörnchen wählen, dann beginnt das Spiel.
   if (!squirrelId) return <CharacterSelect />;

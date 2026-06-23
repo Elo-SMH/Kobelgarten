@@ -5,7 +5,7 @@ import {
   reachableVariegations,
   totalComboCount,
 } from "../../engine/lexicon";
-import { t } from "../../i18n";
+import { plantName, t } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { VARIEG_KEYS } from "../components/variegation";
 
@@ -77,7 +77,7 @@ export function LexiconScreen() {
               className="rounded-2xl border border-cream-300 bg-cream-50 p-4 shadow-sm"
             >
               <h2 className="mb-2 font-semibold text-leaf-900">
-                {species.name}
+                {plantName(species)}
               </h2>
               <div className="flex flex-wrap gap-2">
                 {types.map((type) => {

@@ -1,7 +1,7 @@
 import { CONFIG } from "../../content/config";
 import { speciesById } from "../../content/plants";
 import { phaseOf, type GrowthPhase } from "../../engine/growth";
-import { t, type MessageKey } from "../../i18n";
+import { plantName, t, type MessageKey } from "../../i18n";
 import { useGameStore } from "../../state/store";
 import { playSound } from "../sound";
 import { NeedBar } from "./NeedBar";
@@ -38,7 +38,7 @@ export function PlantCard({ plantId }: PlantCardProps) {
   return (
     <div className="flex flex-1 flex-col gap-2">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-semibold">{species.name}</h3>
+        <h3 className="font-semibold">{plantName(species)}</h3>
         <span className="flex items-center gap-1">
           {plant.genome.variegation.type !== "none" && (
             <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-xs text-leaf-900">

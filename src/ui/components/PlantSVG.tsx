@@ -3,6 +3,7 @@ import { CONFIG } from "../../content/config";
 import type { PlantInstance } from "../../engine/growth";
 import { hashSeed } from "../../engine/rng";
 import type { PlantSpecies } from "../../engine/schemas";
+import { plantName } from "../../i18n";
 import { plantLayout } from "./plantLayout";
 import { VariegatedLeaf } from "./VariegatedLeaf";
 
@@ -23,7 +24,7 @@ export function PlantSVG({ plant, species }: PlantSVGProps) {
     <svg
       viewBox="0 0 120 132"
       role="img"
-      aria-label={species.name}
+      aria-label={plantName(species)}
       className="mx-auto h-36 w-auto"
     >
       <ellipse cx="60" cy="97" rx="19" ry="3.5" fill="#5e4632" />
