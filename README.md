@@ -4,7 +4,7 @@
 
 Kein Backend, keine Accounts, keine Echtgeld-Käufe, keine Werbung – alles läuft lokal im Browser und wird kostenlos über GitHub Pages ausgeliefert. Die Oberfläche ist auf Deutsch (über i18n-Keys EN-ready).
 
-🔗 **Spielen:** `https://<dein-github-name>.github.io/kobelgarten/`
+🔗 **Spielen:** `https://elo-smh.github.io/Kobelgarten/`
 
 ---
 
